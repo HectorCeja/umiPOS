@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": 1,
+  "assets": [
+    {
+      "id": "font.instrument-sans.variable",
+      "path": "assets/fonts/instrument-sans/InstrumentSans-Variable.ttf",
+      "source": "https://github.com/google/fonts/tree/main/ofl/instrumentsans",
+      "license": "OFL-1.1",
+      "licenseFile": "assets/fonts/instrument-sans/OFL.txt",
+      "sha256": "b24f1812584816958afcf22e22d08e44318c5e51651e25d2438efdde389b33b1"
+    },
+    {
+      "id": "font.manrope.variable",
+      "path": "assets/fonts/manrope/Manrope-Variable.ttf",
+      "source": "https://github.com/google/fonts/tree/main/ofl/manrope",
+      "license": "OFL-1.1",
+      "licenseFile": "assets/fonts/manrope/OFL.txt",
+      "sha256": "d0639be45d0af36e798172419d7bd173c4bd4f29e2b76cbb69db1d11bf8b0a40"
+    }
+  ]
+}

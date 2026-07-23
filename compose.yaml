@@ -1,0 +1,257 @@
+name: nexo
+
+services:
+  postgres:
+    image: postgres:18.0-alpine
+    environment:
+      POSTGRES_DB: nexo
+      POSTGRES_USER: nexo_admin
+      POSTGRES_PASSWORD: nexo_admin_local_only
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./infra/postgres/bootstrap/roles.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexo_admin -d nexo']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2.1-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--save', '60', '1']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: nexo_local
+      MINIO_ROOT_PASSWORD: nexo_local_only
+      MINIO_API_CORS_ALLOW_ORIGIN: ${NEXO_AUTH_ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        mc alias set local http://minio:9000 nexo_local nexo_local_only &&
+        mc mb --ignore-existing local/nexo-local &&
+        mc anonymous set none local/nexo-local
+    restart: 'no'
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 500
+    volumes:
+      - mailpit-data:/data
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.132.0
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    volumes:
+      - ./infra/otel/collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+      - '13133:13133'
+    healthcheck:
+      test: ['CMD', '/otelcol-contrib', 'components']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/migrate.Dockerfile
+    environment: &app-environment
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://nexo_runtime:nexo_runtime_local_only@postgres:5432/nexo?schema=public
+      MIGRATION_DATABASE_URL: postgresql://nexo_migration:nexo_migration_local_only@postgres:5432/nexo?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${NEXO_PUBLIC_MEDIA_ORIGIN:-http://localhost:9000}
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY: nexo_local
+      S3_SECRET_KEY: nexo_local_only
+      S3_BUCKET: nexo-local
+      S3_FORCE_PATH_STYLE: 'true'
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM: no-reply@nexo.local
+      APP_BASE_URL: ${NEXO_APP_BASE_URL:-http://localhost:3000}
+      COOKIE_SECURE: 'false'
+      LOCAL_DEVELOPMENT: 'true'
+      DEV_LAN_HOST: ${DEV_LAN_HOST:-}
+      DEV_WEB_PORT: ${DEV_WEB_PORT:-3000}
+      DEV_API_PORT: ${DEV_API_PORT:-3001}
+      DEV_OBJECT_STORAGE_PORT: ${DEV_OBJECT_STORAGE_PORT:-9000}
+      AUTH_TOKEN_HMAC_SECRET: nexo-local-token-hmac-secret-change-in-production
+      AUTH_RATE_LIMIT_HMAC_SECRET: nexo-local-rate-limit-hmac-secret-change-in-production
+      AUTH_ALLOWED_ORIGINS: ${NEXO_AUTH_ALLOWED_ORIGINS:-http://localhost:3000}
+      AUTH_ACCESS_TTL_SECONDS: 900
+      AUTH_IDLE_TTL_SECONDS: 1800
+      AUTH_ABSOLUTE_TTL_SECONDS: 43200
+      AUTH_REMEMBER_ABSOLUTE_TTL_SECONDS: 2592000
+      AUTH_PASSWORD_RESET_TTL_SECONDS: 1800
+      AUTH_EMAIL_VERIFICATION_TTL_SECONDS: 86400
+      AUTH_DEVICE_RECOGNITION_TTL_SECONDS: 2592000
+      AUTH_MAX_LOGIN_ATTEMPTS: 10
+      AUTH_LOCK_TTL_SECONDS: 900
+      AUTH_PASSWORD_BLOCKLIST_FILE: /run/secrets/nexo-password-blocklist.txt
+      IDENTITY_DEFAULT_LOCALE: es-MX
+      IDENTITY_DEFAULT_TIME_ZONE: America/Mazatlan
+      IDENTITY_DEFAULT_REGIONAL_FORMAT: es-MX
+      IDENTITY_PASSWORD_MIN_LENGTH: 15
+      IDENTITY_PASSWORD_MAX_LENGTH: 128
+      IDENTITY_PASSWORD_ARGON2_MEMORY_KIB: 19456
+      IDENTITY_PASSWORD_ARGON2_PASSES: 2
+      IDENTITY_PASSWORD_ARGON2_PARALLELISM: 1
+      IDENTITY_PASSWORD_HISTORY_DEPTH: 0
+      IDENTITY_PASSWORD_EXPIRATION_DAYS: 0
+      IDENTITY_FEATURE_OAUTH: 'false'
+      IDENTITY_FEATURE_SSO: 'false'
+      IDENTITY_FEATURE_PASSKEYS: 'false'
+      IDENTITY_FEATURE_WEBAUTHN: 'false'
+      IDENTITY_FEATURE_MAGIC_LINKS: 'false'
+      IDENTITY_FEATURE_PASSWORDLESS: 'false'
+      OTEL_SERVICE_NAME: nexo-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SDK_DISABLED: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    environment:
+      <<: *app-environment
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./infra/identity/password-blocklist.txt:/run/secrets/nexo-password-blocklist.txt:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--spider', 'http://127.0.0.1:3001/health/ready']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/worker.Dockerfile
+    environment:
+      <<: *app-environment
+      DATABASE_URL: postgresql://nexo_worker:nexo_worker_local_only@postgres:5432/nexo?schema=public
+      OTEL_SERVICE_NAME: nexo-worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const f='/tmp/nexo-worker-ready';const s=require('fs').statSync(f);if(Date.now()-s.mtimeMs>5000)process.exit(1)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    environment:
+      NODE_ENV: production
+      LOCAL_DEVELOPMENT: 'true'
+      DEV_LAN_HOST: ${DEV_LAN_HOST:-}
+      DEV_WEB_PORT: ${DEV_WEB_PORT:-3000}
+      DEV_API_PORT: ${DEV_API_PORT:-3001}
+      DEV_OBJECT_STORAGE_PORT: ${DEV_OBJECT_STORAGE_PORT:-9000}
+      NEXT_PUBLIC_API_URL: ${NEXO_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXO_PUBLIC_API_URL:-http://localhost:3001}
+      NEXO_PUBLIC_API_ORIGIN: ${NEXO_PUBLIC_API_URL:-http://localhost:3001}
+      NEXO_APP_BASE_URL: ${NEXO_APP_BASE_URL:-http://localhost:3000}
+      # Browser-reachable upload origin only; avatar reads remain on the API.
+      NEXO_PUBLIC_MEDIA_ORIGIN: ${NEXO_PUBLIC_MEDIA_ORIGIN:-http://localhost:9000}
+      NEXT_PUBLIC_WEB_URL: ${NEXO_APP_BASE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_OBJECT_STORAGE_URL: ${NEXO_PUBLIC_MEDIA_ORIGIN:-http://localhost:9000}
+    ports:
+      - '3000:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--spider', 'http://127.0.0.1:3000']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mailpit-data:
+  minio-data:
+  postgres-data:
+  redis-data:

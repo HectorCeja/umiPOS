@@ -1,0 +1,37 @@
+/* Final immersion pass: authenticated desktop-app scrolling only.
+ * Onboarding and Login do not mount .product-shell and are intentionally excluded. */
+
+html:has(.product-shell),
+body:has(.product-shell) {
+  height: 100%;
+  overflow: hidden;
+}
+
+.nexo-living-scene:has(.product-shell),
+.nexo-living-scene:has(.product-shell) > .nexo-living-scene__content {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-shell {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-shell > :is(.unified-content, .product-main) {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: rgb(128 104 255 / 55%) transparent;
+}
+
+/* Route Content already starts below the fixed Topbar. Secondary navigation remains in normal
+ * flow, so its intrinsic height is the single automatic content offset; sticky positioning is
+ * relative to Route Content and must not add the Topbar height a second time. */
+.product-shell > .unified-content .section-nav {
+  top: 0;
+}

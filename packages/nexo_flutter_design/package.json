@@ -1,0 +1,13 @@
+{
+  "name": "@nexo/flutter-design",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "artwork:sync": "node tool/sync-artwork.mjs",
+    "artwork:check": "node tool/sync-artwork.mjs --check",
+    "assets:check": "node tool/check-assets.mjs",
+    "tokens:generate": "node tool/generate-tokens.mjs",
+    "tokens:check": "node tool/generate-tokens.mjs --check && node tool/check-assets.mjs && node tool/sync-artwork.mjs --check",
+    "components:check": "node tool/check-components.mjs"
+  }
+}

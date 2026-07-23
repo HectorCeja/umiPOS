@@ -1,0 +1,13 @@
+.next
+coverage
+dist
+node_modules
+pnpm-lock.yaml
+storybook-static
+playwright-report
+test-results
+artifacts
+packages/database/src/generated
+**/.dart_tool
+**/build
+apps/web/next-env.d.ts

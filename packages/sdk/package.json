@@ -1,0 +1,27 @@
+{
+  "name": "@nexo/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "pnpm generate:check && tsc -p tsconfig.build.json",
+    "generate": "node scripts/generate-openapi-operations.mjs",
+    "generate:check": "node scripts/generate-openapi-operations.mjs --check",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm generate:check && vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@nexo/typescript-config": "workspace:*",
+    "@vitest/coverage-v8": "3.2.4",
+    "prettier": "3.6.2",
+    "vitest": "3.2.4"
+  }
+}

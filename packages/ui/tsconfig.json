@@ -1,0 +1,4 @@
+{
+  "extends": "@nexo/typescript-config/react-library.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx", ".storybook/**/*.ts", "vitest.config.ts"]
+}

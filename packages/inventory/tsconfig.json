@@ -1,0 +1,5 @@
+{
+  "extends": "@nexo/typescript-config/node.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}

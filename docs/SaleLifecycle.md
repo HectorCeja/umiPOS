@@ -1,0 +1,5 @@
+# Sale Lifecycle
+
+Transiciones principales: `DRAFT→OPEN`; `OPEN→SUSPENDED|CHECKOUT_PENDING|CANCELLED|EXPIRED`; `SUSPENDED→OPEN|CANCELLED|EXPIRED`; `CHECKOUT_PENDING→OPEN|PAYMENT_PENDING|FAILED|CANCELLED`; `PAYMENT_PENDING→COMPLETED|FAILED|CANCELLED`; `COMPLETED→PARTIALLY_REFUNDED|REFUNDED`; `PARTIALLY_REFUNDED→PARTIALLY_REFUNDED|REFUNDED`.
+
+FAILED puede reabrirse o cancelarse. Estados terminales CANCELLED, REFUNDED y EXPIRED no transicionan. Cancelación/fallo/expiración exige motivo. Cada transición registra actor, timestamp, versión y evento.

@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+injectWorkspacePackages: true
+
+syncInjectedDepsAfterScripts:
+  - build
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/engines'
+  - esbuild
+  - nestjs-pino
+  - prisma

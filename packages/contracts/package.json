@@ -1,0 +1,21 @@
+{
+  "name": "@nexo/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./openapi": "./openapi/openapi.json"
+  },
+  "scripts": {
+    "build": "pnpm validate",
+    "lint": "eslint scripts --max-warnings=0",
+    "typecheck": "node scripts/validate-openapi.mjs",
+    "test": "pnpm validate && pnpm compatibility",
+    "validate": "node scripts/validate-openapi.mjs",
+    "compatibility": "node scripts/check-breaking-changes.mjs"
+  },
+  "devDependencies": {
+    "@nexo/typescript-config": "workspace:*",
+    "@types/node": "24.1.0"
+  }
+}

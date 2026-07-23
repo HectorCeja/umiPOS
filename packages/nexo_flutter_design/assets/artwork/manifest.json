@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "ownership": "NEXO project-approved assets",
+  "runtimeNetworkDependency": false,
+  "assets": [
+    {
+      "id": "womanPos",
+      "file": "womanpos.png",
+      "source": "womanpos.png",
+      "sha256": "3b106ed3f9f947213ab6118e0a9e55c1019bb2cbb9bdf8edfcd0a26555fa629e"
+    },
+    {
+      "id": "products",
+      "file": "products.jpeg",
+      "source": "products.jpeg",
+      "sha256": "c77b9f79e74501c126f77bd2477d9a2c614445f58fdb1e17a8cd69587b3bf662"
+    },
+    {
+      "id": "inventory",
+      "file": "inventory.jpeg",
+      "source": "inventory.jpeg",
+      "sha256": "f981549c0fd871bb2b08f23266b620997dfe3bf72324461dfbba13bbb5b04164"
+    },
+    {
+      "id": "analytics",
+      "file": "analytics.jpeg",
+      "source": "analytics.jpeg",
+      "sha256": "0088673b4ca9611b9ff861c41a5cf6696c348ec1df8189a5075f0e39213b1526"
+    }
+  ]
+}

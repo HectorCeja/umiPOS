@@ -1,0 +1,16 @@
+# Web Surface Inventory
+
+| URL                          | Módulo         | Propósito                                  | Shell                       | Backend / servicio                            | Estado   | Acción y deuda UX                                                             |
+| ---------------------------- | -------------- | ------------------------------------------ | --------------------------- | --------------------------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `/`                          | Producto       | Login, routing, onboarding e Inicio        | Global NEXO                 | Authentication, Control Plane, Sales Overview | COMPLETE | Mantener una sola entrada                                                     |
+| `/sales` y subrutas          | Sales          | Administración, historial y excepciones    | Global NEXO + subnavegación | Sales Administration                          | COMPLETE | Progressive disclosure técnico                                                |
+| `/cash`                      | Cash           | Sesión, movimientos, cierre y aprobaciones | Global NEXO + scrollspy     | Cash Application Services                     | COMPLETE | Diagnóstico permanece avanzado                                                |
+| `/products`                  | Product        | Listar, buscar y crear productos           | Global NEXO                 | Product Application Service                   | COMPLETE | Detalle avanzado continúa en contratos públicos                               |
+| `/inventory`                 | Inventory      | Disponibilidad y movimientos               | Global NEXO                 | Inventory Application Service                 | PARTIAL  | Requiere referencias de variante/ubicación; no hay selector compuesto público |
+| `/control-plane/invitations` | Equipo         | Miembros e invitaciones                    | Global NEXO                 | Control Plane                                 | PARTIAL  | La superficie heredada aún no ejecuta la invitación desde este formulario     |
+| `/control-plane/settings`    | Configuración  | Contexto regional del negocio              | Global NEXO                 | Control Plane                                 | PARTIAL  | Edición autoritativa principal disponible durante onboarding                  |
+| `/settings/profile`          | Cuenta         | Perfil y preferencias                      | Global NEXO                 | Authentication `PATCH /v1/profile`            | COMPLETE | Avatar por URL administrada; carga binaria privada no disponible              |
+| `/help`                      | Ayuda          | Orientación contextual                     | Global NEXO                 | Documentación del producto                    | COMPLETE | Ampliar base de conocimiento en Fase 13                                       |
+| `/control-plane/onboarding`  | Compatibilidad | Ruta antigua                               | Redirección                 | Root router                                   | HIDDEN   | No expone shell antiguo                                                       |
+
+No se usa “Control Plane” en superficies de negocio. Las capacidades PARTIAL no se presentan como terminadas.

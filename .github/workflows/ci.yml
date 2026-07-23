@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm --filter @nexo/contracts compatibility
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - run: pnpm --filter @nexo/ui build-storybook
+
+  migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18.0-alpine
+        env:
+          POSTGRES_DB: nexo
+          POSTGRES_USER: nexo_admin
+          POSTGRES_PASSWORD: nexo_admin_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexo_admin -d nexo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://nexo_migration:nexo_migration_local_only@localhost:5432/nexo?schema=public
+      MIGRATION_DATABASE_URL: postgresql://nexo_migration:nexo_migration_local_only@localhost:5432/nexo?schema=public
+      PGPASSWORD: nexo_admin_ci_only
+      IDENTITY_DEFAULT_LOCALE: es-MX
+      IDENTITY_DEFAULT_TIME_ZONE: America/Mazatlan
+      IDENTITY_DEFAULT_REGIONAL_FORMAT: es-MX
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: psql -h localhost -U nexo_admin -d nexo -v ON_ERROR_STOP=1 -f infra/postgres/bootstrap/roles.sql
+      - run: pnpm db:generate
+      - run: pnpm db:deploy
+      - run: pnpm db:seed
+      - run: psql -h localhost -U nexo_admin -d nexo -v ON_ERROR_STOP=1 -f packages/database/tests/rls.integration.sql
+
+  design-system:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:ui
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-system-failures
+          path: |
+            test-results/ui
+            playwright-report
+
+  flutter-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm flutter:tokens
+      - run: cd packages/nexo_flutter_design && dart format --output=none --set-exit-if-changed .
+      - run: cd packages/nexo_flutter_design && flutter pub get
+      - run: cd packages/nexo_flutter_design && flutter analyze
+      - run: cd packages/nexo_flutter_design && flutter test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-foundation-failures
+          path: packages/nexo_flutter_design/test/failures
+
+  compose-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
+
+  container-builds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [api, migrate, web, worker]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --file infra/docker/${{ matrix.dockerfile }}.Dockerfile --tag nexo-${{ matrix.dockerfile }}:ci .
+
+  authentication-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: docker compose up --build --wait
+      - run: pnpm test:e2e:quality
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes

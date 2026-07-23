@@ -1,0 +1,30 @@
+# Owner Final Acceptance Gate — Part 1A
+
+Estado técnico: **CORRECCIONES IMPLEMENTADAS — CONFIRMACIÓN VISUAL DEL OWNER PENDIENTE**.
+
+NEXO Product Certification continúa bloqueada. Ninguna observación se considera cerrada hasta que el owner confirme la evidencia visual.
+
+| P0                     | Reproducción y causa raíz                                                                                                                            | Corrección                                                                                                                          | Regresión                                                  | Estado                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------- |
+| Ayuda pública de Login | El componente común enlazaba siempre a `/help`, una ruta autenticada.                                                                                | Modo `publicOnly`: soporte y recuperación pública; Centro de Ayuda solo dentro de sesión.                                           | `owner-login-help.spec.ts`                                 | Técnica PASS; owner pendiente |
+| Avatar al navegar      | No existía proveedor persistente y el setter cambiaba por render, causando refetch continuo; cada avatar mantenía además su propio estado de carga.  | `IdentityProvider` canónico, setter estable, hidratación desde sesión, evento único e imagen resistente a caché/decodificación.     | `owner-avatar-final.spec.ts`                               | Técnica PASS; owner pendiente |
+| Botones verdes         | Cascada legacy conservaba verde en el botón genérico y la variante primaria.                                                                         | Acciones primarias usan tokens oficiales; verde queda reservado para estado.                                                        | `owner-green-buttons.spec.ts`                              | Técnica PASS; owner pendiente |
+| Feedback y scroll      | El estado existía, pero no era un destino común enfocable; el error de Caja quedaba fuera del contenedor.                                            | `SaveStatus` y `#cash-feedback` enfocan, desplazan y resaltan respetando reduced motion.                                            | `owner-scroll-feedback.spec.ts`, `cash-final.spec.ts`      | Técnica PASS; owner pendiente |
+| Caja                   | Había un formulario visual de demostración duplicado, además del conectado; el error no desplazaba y las acciones no comunicaban un destino estable. | Se eliminó la superficie falsa, se preservaron solo controles conectados y se reforzaron guards, mensajes y selección autoritativa. | `cash-final.spec.ts`, `cash-ui.spec.ts`, `cash.spec.ts`    | Técnica PASS; owner pendiente |
+| Smart defaults         | Sucursales no compartían el patrón sugerencia + entrada propia.                                                                                      | Presets comerciales editables y CRUD real; categorías, Caja, motivos, roles y ubicaciones conservan selección autoritativa.         | `branch-crud.spec.ts`, suites de presets                   | Técnica PASS; owner pendiente |
+| Edición de Producto    | El frontend solo ofrecía creación y el DTO PATCH omitía SKU, categoría e icono; media/precio primarios podían acumularse.                            | Edición real de nombre, precio, foto, descripción, icono, categoría, SKU y código; reemplazo transaccional de principales.          | `product-editing.spec.ts`                                  | Técnica PASS; owner pendiente |
+| Detalle de Producto    | Las acciones y edición no formaban un flujo completo.                                                                                                | Una sola X, edición integrada, foco/escape/backdrop existentes, fotografía principal y contención responsive.                       | `product-editing.spec.ts`, `product-detail-dialog.spec.ts` | Técnica PASS; owner pendiente |
+| Inventario             | La cuadrícula alineaba el botón contra el helper y no contra los selects.                                                                            | Tres filas semánticas equivalentes (label/control/helper), sin offsets visuales; IDs reales permanecen como valores.                | `inventory-alignment.spec.ts`                              | Técnica PASS; owner pendiente |
+| Sucursales             | API CRUD existía, pero la UI solo listaba.                                                                                                           | Crear, editar, renombrar, archivar y restaurar con tenant activo, CSRF, permisos y versiones.                                       | `branch-crud.spec.ts`                                      | Técnica PASS; owner pendiente |
+| Viewport/DevTools      | El documento está inmóvil por diseño de app, pero la certificación previa inspeccionaba el documento en vez de la superficie scrollable.             | Se certifica el contenedor autoritativo `.unified-content` en cuatro viewports y safe areas.                                        | `viewport-devtools.spec.ts`                                | Técnica PASS; owner pendiente |
+
+No se autoriza Product Certification.
+
+## Cierre técnico
+
+- Regresión focal consolidada: **20/20 PASS**, 0 FAIL, 0 SKIPPED.
+- Walkthrough exacto con usuario, organización y onboarding nuevos: **1/1 PASS**; 12 capturas y video sin editar.
+- Caja con PostgreSQL real: **4/4 PASS**; UI conectada: **2/2 PASS**.
+- `pnpm check`: **PASS** completo (format, lint, tipos estrictos, unit/contract tests y builds).
+- Compose: API, Web, Worker, PostgreSQL, Redis, MinIO, Mailpit y OpenTelemetry saludables.
+- Console/Network: sin errores inesperados durante los recorridos certificados.

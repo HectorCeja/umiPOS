@@ -1,0 +1,28 @@
+{
+  "name": "@nexo/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/main.ts",
+    "lint": "eslint . --max-warnings=0",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@nexo/config": "workspace:*",
+    "@nexo/database": "workspace:*",
+    "@nexo/inventory": "workspace:*",
+    "@nexo/observability": "workspace:*",
+    "pino": "9.7.0"
+  },
+  "devDependencies": {
+    "@nexo/typescript-config": "workspace:*",
+    "@vitest/coverage-v8": "3.2.4",
+    "tsx": "4.20.3",
+    "vitest": "3.2.4"
+  }
+}

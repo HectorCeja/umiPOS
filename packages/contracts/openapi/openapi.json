@@ -1,0 +1,4324 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "NEXO Core Domain API",
+    "version": "8.9.0",
+    "description": "Contrato canónico design-first para Core, Identity, Authorization, Control Plane, Product, Inventory y Sales Platform; neutral para Web, Flutter y UMI."
+  },
+  "servers": [{ "url": "/" }],
+  "x-nexo-failure-contract": {
+    "problemSchema": "#/components/schemas/Problem",
+    "correlationHeader": "x-request-id",
+    "transportErrors": [413, 429, 500, 503],
+    "retryPolicy": "Clients decide retries. Financial retries must reuse the original idempotency-key; 401, 403 and divergent 409 responses are not automatically retryable."
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "responses": { "200": { "description": "Proceso activo" } }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "Core dependencies available; optional object storage may be reported as degraded"
+          },
+          "503": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated; opaque credentials are returned only as cookies",
+            "headers": { "Set-Cookie": { "schema": { "type": "string" } } },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthStatus" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "413": { "$ref": "#/components/responses/Problem" },
+          "429": { "$ref": "#/components/responses/Problem" },
+          "503": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "refreshSession",
+        "security": [{ "refreshCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "responses": {
+          "200": {
+            "description": "Session and refresh generation rotated",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthStatus" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "responses": {
+          "204": { "description": "Current session revoked" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/logout-all": {
+      "post": {
+        "operationId": "logoutAll",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "responses": {
+          "204": { "description": "Every active session for the User revoked" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/password-reset/request": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/EmailRequest" } }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Uniform acceptance whether or not the account exists",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedStatus" } }
+            }
+          },
+          "429": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/password-reset/complete": {
+      "post": {
+        "operationId": "completePasswordReset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PasswordResetCompleteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Password changed; all sessions revoked" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/email-verification/request": {
+      "post": {
+        "operationId": "requestEmailVerification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/EmailRequest" } }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Uniform acceptance whether or not a pending address exists",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedStatus" } }
+            }
+          },
+          "429": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/auth/email-verification/complete": {
+      "post": {
+        "operationId": "completeEmailVerification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/TokenRequest" } }
+          }
+        },
+        "responses": {
+          "204": { "description": "Bound email verified once" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/identity": {
+      "get": {
+        "operationId": "getCurrentIdentity",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Current authenticated global identity",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthenticatedIdentity" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/profile": {
+      "patch": {
+        "operationId": "updateCurrentProfile",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile and presentation preferences",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/profile/avatar": {
+      "delete": {
+        "operationId": "removeProfileAvatar",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "responses": {
+          "200": {
+            "description": "Avatar association removed and cleanup scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["avatarUrl"],
+                  "properties": { "avatarUrl": { "type": "null" } }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/profile/avatar/uploads": {
+      "post": {
+        "operationId": "prepareProfileAvatar",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PrepareProfileAvatarRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Short-lived private upload URL scoped to the current user" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "422": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/profile/avatar/complete": {
+      "post": {
+        "operationId": "completeProfileAvatar",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CompleteProfileAvatarRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Validated avatar atomically associated to the authenticated profile"
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "422": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/profile/avatar/{token}": {
+      "get": {
+        "operationId": "getProfileAvatar",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private avatar bytes owned by the current user",
+            "content": { "image/png": {}, "image/jpeg": {}, "image/webp": {} }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Active non-expired sessions owned by the User",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Session" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "revokeSession",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/SessionId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "responses": {
+          "204": { "description": "Owned session revoked idempotently" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations": {
+      "get": {
+        "operationId": "listActiveOrganizations",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Organizaciones activas accesibles por la identidad actual",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Organization" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createOrganization",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/OrganizationCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization bootstrap completed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "getOrganization",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Organización",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "patch": {
+        "operationId": "updateOrganization",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/OrganizationUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Organización actualizada",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Organization" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "delete": {
+        "operationId": "archiveOrganization",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/VersionQuery" }
+        ],
+        "responses": {
+          "204": { "description": "Organization archived" },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/branches": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listBranches",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Sucursales",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Branch" } }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createBranch",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/BranchCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucursal creada",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Branch" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/branches/{branchId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/BranchPathId" }
+      ],
+      "patch": {
+        "operationId": "updateBranch",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/BranchUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Branch updated",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Branch" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "delete": {
+        "operationId": "archiveBranch",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/VersionQuery" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Branch archived",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Branch" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/branches/{branchId}/restore": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/BranchPathId" }
+      ],
+      "post": {
+        "operationId": "restoreBranch",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/VersionCommand" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Branch restored",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Branch" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/business-templates": {
+      "get": {
+        "operationId": "listBusinessTemplates",
+        "responses": {
+          "200": {
+            "description": "Active data-driven templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/BusinessTemplate" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/onboarding": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "getOnboarding",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Onboarding state",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Onboarding" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "put": {
+        "operationId": "saveOnboarding",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/OnboardingUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Onboarding draft saved",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Onboarding" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/onboarding/complete": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "post": {
+        "operationId": "completeOnboarding",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/VersionCommand" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template applied atomically",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Onboarding" } }
+            }
+          },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/onboarding/restart": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "post": {
+        "operationId": "restartOnboarding",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/VersionCommand" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fresh draft without deleting applied configuration",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Onboarding" } }
+            }
+          },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/features/{featureKey}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/FeatureKey" }
+      ],
+      "patch": {
+        "operationId": "updateFeatureFlag",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/FeatureUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feature availability changed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/FeatureFlag" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/invitations": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listInvitations",
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Invitation" }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createInvitation",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/InvitationCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invitation mailed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Invitation" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/invitations/{invitationId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/InvitationId" }
+      ],
+      "delete": {
+        "operationId": "revokeInvitation",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/VersionQuery" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation revoked",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Invitation" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/invitations/{invitationId}/resend": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/InvitationId" }
+      ],
+      "post": {
+        "operationId": "resendInvitation",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "responses": {
+          "200": {
+            "description": "Token rotated and invitation resent",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Invitation" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/invitations/accept": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "post": {
+        "operationId": "acceptInvitation",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/TokenRequest" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Membership created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Membership" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/memberships/{membershipId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationId" },
+        { "$ref": "#/components/parameters/MembershipId" }
+      ],
+      "patch": {
+        "operationId": "updateMembership",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/CsrfToken" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/MembershipUpdate" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Membership role, state and branches updated",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Membership" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/memberships": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listMemberships",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BranchId" }],
+        "responses": {
+          "200": {
+            "description": "Membresías",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Membership" }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createMembership",
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/MembershipCreate" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Membresía creada",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Membership" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/authorization/context": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "getAuthorizationContext",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BranchId" }],
+        "responses": {
+          "200": {
+            "description": "Contexto efectivo resuelto exclusivamente desde estado autoritativo del servidor",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthorizationContext" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/authorization/evaluate": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "post": {
+        "operationId": "evaluatePermission",
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PermissionEvaluationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decisión explicable para el actor actual; no ejecuta una operación de negocio",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthorizationDecision" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/roles": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listRoles",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BranchId" }],
+        "responses": {
+          "200": {
+            "description": "Roles versionados y asignación efectiva del actor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AuthorizationRole" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/permissions": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listPermissions",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BranchId" }],
+        "responses": {
+          "200": {
+            "description": "Registro único de permisos y scopes efectivos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Permission" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/feature-flags": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+      "get": {
+        "operationId": "listFeatureFlags",
+        "security": [{ "sessionCookie": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BranchId" }],
+        "responses": {
+          "200": {
+            "description": "Disponibilidad de producto; nunca concede permisos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/FeatureFlag" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/users/{userId}": {
+      "get": {
+        "operationId": "getUser",
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "User identity profile",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/User" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/users/{userId}/identity": {
+      "get": {
+        "operationId": "getIdentityFoundation",
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Identity capabilities and lifecycle state",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Identity" } }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/users/{userId}/emails": {
+      "get": {
+        "operationId": "listUserEmails",
+        "parameters": [{ "$ref": "#/components/parameters/UserId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Email identities owned by the user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/EmailIdentity" }
+                }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/products": {
+      "get": {
+        "operationId": "listProducts",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "name": "q", "in": "query", "schema": { "type": "string", "maxLength": 200 } }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Tenant product catalog",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateProduct" } }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Product" } }
+            }
+          },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}": {
+      "get": {
+        "operationId": "getProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Product",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Product" } }
+            }
+          },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "patch": {
+        "operationId": "updateProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProduct" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Product updated" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/archive": {
+      "post": {
+        "operationId": "archiveProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/Version" },
+        "responses": { "201": { "description": "Product archived" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/activate": {
+      "post": {
+        "operationId": "activateProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/Version" },
+        "responses": { "201": { "description": "Product activated for sale" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/restore": {
+      "post": {
+        "operationId": "restoreProduct",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/Version" },
+        "responses": { "201": { "description": "Product restored" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/variants": {
+      "post": {
+        "operationId": "createProductVariant",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateVariant" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Variant created" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/barcodes": {
+      "post": {
+        "operationId": "addProductBarcode",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateBarcode" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Barcode added" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/prices": {
+      "post": {
+        "operationId": "updateProductPrice",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreatePrice" } }
+          }
+        },
+        "responses": { "201": { "description": "Price recorded" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/product-categories": {
+      "get": {
+        "operationId": "listProductCategories",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped category tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "slug", "sortOrder"],
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "name": { "type": "string" },
+                      "slug": { "type": "string" },
+                      "parentId": { "type": ["string", "null"], "format": "uuid" },
+                      "sortOrder": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProductCategory",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateCategory" } }
+          }
+        },
+        "responses": { "201": { "description": "Category created" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/media/uploads": {
+      "post": {
+        "operationId": "prepareProductMediaUpload",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PrepareMedia" } }
+          }
+        },
+        "responses": { "201": { "description": "Private presigned upload prepared" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/media/complete": {
+      "post": {
+        "operationId": "completeProductMediaUpload",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CompleteMedia" } }
+          }
+        },
+        "responses": { "201": { "description": "Media object verified and activated" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/products/{productId}/media/{mediaId}": {
+      "get": {
+        "operationId": "getProductMedia",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ProductId" },
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Authenticated product media bytes",
+            "content": {
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/locations": {
+      "get": {
+        "operationId": "listInventoryLocations",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Active inventory locations visible in context",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "code", "type", "active"],
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "branchId": { "type": ["string", "null"], "format": "uuid" },
+                      "name": { "type": "string" },
+                      "code": { "type": "string" },
+                      "type": { "type": "string" },
+                      "active": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInventoryLocation",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InventoryLocationInput" }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Location created" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/locations/{locationId}": {
+      "put": {
+        "operationId": "updateInventoryLocation",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InventoryLocationUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Location updated" },
+          "404": { "$ref": "#/components/responses/Problem" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/movements": {
+      "get": {
+        "operationId": "getInventoryTimeline",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/VariantQuery" },
+          { "$ref": "#/components/parameters/LocationQuery" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Immutable movement timeline" } }
+      },
+      "post": {
+        "operationId": "recordInventoryMovement",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InventoryMovementInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Movement appended" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/availability": {
+      "get": {
+        "operationId": "getInventoryAvailability",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/VariantQuery" },
+          { "$ref": "#/components/parameters/LocationQuery" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Derived availability",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Availability" } }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/reservations": {
+      "post": {
+        "operationId": "createInventoryReservation",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ReservationInput" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Reservation created" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/reservations/{reservationId}/release": {
+      "post": {
+        "operationId": "releaseInventoryReservation",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/ReservationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ReleaseInput" } }
+          }
+        },
+        "responses": { "201": { "description": "Reservation released" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/transfers": {
+      "post": {
+        "operationId": "createInventoryTransfer",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/TransferInput" } }
+          }
+        },
+        "responses": { "201": { "description": "Transfer dispatched" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/transfers/{transferId}/complete": {
+      "post": {
+        "operationId": "completeInventoryTransfer",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/TransferId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CompleteInput" } }
+          }
+        },
+        "responses": { "201": { "description": "Transfer completed" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/counts": {
+      "post": {
+        "operationId": "recordInventoryCount",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CountInput" } }
+          }
+        },
+        "responses": { "201": { "description": "Count reconciled by movement" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/inventory/policies": {
+      "put": {
+        "operationId": "setInventoryPolicy",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InventoryPolicyInput" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Inventory policy saved" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales": {
+      "get": {
+        "operationId": "listSales",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/BranchId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Tenant-scoped sales" },
+          "403": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "post": {
+        "operationId": "createSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateSaleInput" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Sale created" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}": {
+      "get": {
+        "operationId": "getSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sale aggregate projection" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/items": {
+      "post": {
+        "operationId": "addSaleItem",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/AddSaleItemInput" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authoritative item snapshot" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/checkout": {
+      "post": {
+        "operationId": "prepareSaleCheckout",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Server-calculated checkout" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/payments": {
+      "post": {
+        "operationId": "recordSalePayment",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PaymentInput" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Payment allocation recorded" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/payment-outcome": {
+      "get": {
+        "operationId": "getPaymentAttemptOutcomeByIdempotencyKey",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          {
+            "name": "idempotencyKey",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "minLength": 8, "maxLength": 160 }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Authoritative payment outcome located by the original stable idempotency key",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PaymentOutcome" } }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/payments/{paymentAttemptId}/outcome": {
+      "get": {
+        "operationId": "getPaymentAttemptOutcome",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          {
+            "name": "paymentAttemptId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Authoritative payment outcome",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PaymentOutcome" } }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/complete": {
+      "post": {
+        "operationId": "completeSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sale completed once" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/suspend": {
+      "post": {
+        "operationId": "suspendSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Sale suspended" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/resume": {
+      "post": {
+        "operationId": "resumeSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Sale resumed" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/cancel": {
+      "post": {
+        "operationId": "cancelSale",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/ExpectedVersion" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ReasonInput" } }
+          }
+        },
+        "responses": { "200": { "description": "Open sale cancelled and reservations released" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/refunds": {
+      "post": {
+        "operationId": "requestSaleRefund",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/RefundInput" } }
+          }
+        },
+        "responses": {
+          "202": { "description": "Refund intent accepted" },
+          "409": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/receipt": {
+      "post": {
+        "operationId": "generateSaleReceipt",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "201": { "description": "Client-neutral receipt model" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/policies": {
+      "get": {
+        "operationId": "getSalesPolicy",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/BranchId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Effective persisted sales policy" } }
+      },
+      "put": {
+        "operationId": "updateSalesPolicy",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/BranchId" },
+          { "$ref": "#/components/parameters/CsrfToken" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "allowWithoutInventory": { "type": "boolean" },
+                  "allowNegativeStock": { "type": "boolean" },
+                  "automaticReservation": { "type": "boolean" },
+                  "reservationTtlSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+                  "allowDiscounts": { "type": "boolean" },
+                  "maximumDiscountBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "requireSupervisorAboveBasisPoints": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "allowManualPrice": { "type": "boolean" },
+                  "allowSuspendedSales": { "type": "boolean" },
+                  "suspendedSaleTtlSeconds": { "type": "integer", "minimum": 1, "maximum": 604800 },
+                  "allowCancellation": { "type": "boolean" },
+                  "allowRefund": { "type": "boolean" },
+                  "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+                  "roundingMode": { "type": "string", "enum": ["HALF_UP", "HALF_EVEN", "DOWN"] },
+                  "enabledPaymentMethods": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": ["CASH", "CARD_EXTERNAL", "BANK_TRANSFER", "OTHER"]
+                    }
+                  }
+                },
+                "minProperties": 1
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Persisted branch sales policy" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/external-mappings": {
+      "get": {
+        "operationId": "listExternalMappings",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Authorized external mappings" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/registers": {
+      "get": {
+        "operationId": "listCashRegisters",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Cash Registers" } }
+      },
+      "post": {
+        "operationId": "createCashRegister",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCashRegisterCommand" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Cash Register created" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/drawers": {
+      "get": {
+        "operationId": "listCashDrawers",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Cash Drawers" } }
+      },
+      "post": {
+        "operationId": "createCashDrawer",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCashDrawerCommand" }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Cash Drawer created" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/registers/{registerId}": {
+      "patch": {
+        "operationId": "updateCashRegister",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCashRegisterCommand" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Cash Register updated" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/drawers/{drawerId}": {
+      "patch": {
+        "operationId": "updateCashDrawer",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CsrfToken" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCashDrawerCommand" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Cash Drawer updated" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/open": {
+      "post": {
+        "operationId": "openCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/OpenCashSessionCommand" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Cash Session opened" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/active": {
+      "get": {
+        "operationId": "getActiveCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Active Cash Session or null" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}": {
+      "get": {
+        "operationId": "getCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Authoritative Cash Session" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/movements": {
+      "post": {
+        "operationId": "recordCashMovement",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RecordCashMovementCommand" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Immutable Cash Ledger entry" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/counts": {
+      "post": {
+        "operationId": "countCash",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CountCashCommand" } }
+          }
+        },
+        "responses": { "201": { "description": "Server-calculated Cash Count" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/reconcile": {
+      "post": {
+        "operationId": "reconcileCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Deterministic reconciliation" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/close": {
+      "post": {
+        "operationId": "closeCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CloseCashSessionCommand" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Cash Session closed or force-closed" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/timeline": {
+      "get": {
+        "operationId": "getCashTimeline",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Paginated-ready Cash timeline" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/summary": {
+      "get": {
+        "operationId": "getCashOperationalSummary",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Ledger-derived operational summary" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/suspend": {
+      "post": {
+        "operationId": "suspendCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": {
+          "200": { "description": "Cash Session suspended" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/resume": {
+      "post": {
+        "operationId": "resumeCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": {
+          "200": { "description": "Cash Session resumed" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/policies": {
+      "get": {
+        "operationId": "getCashPolicy",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Effective Cash Policy" } }
+      },
+      "post": {
+        "operationId": "saveCashPolicy",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "200": { "description": "Cash Policy saved" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/approvals": {
+      "get": {
+        "operationId": "listCashApprovals",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Cash approval queue" } }
+      },
+      "post": {
+        "operationId": "requestCashApproval",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Approval requested" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/approvals/{approvalId}/decision": {
+      "post": {
+        "operationId": "decideCashApproval",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "approvalId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": {
+          "200": { "description": "Approval decided" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/deposits": {
+      "post": {
+        "operationId": "prepareCashDeposit",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Deposit prepared" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/deposits/{depositId}/transition": {
+      "post": {
+        "operationId": "transitionCashDeposit",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "depositId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "200": { "description": "Deposit transitioned" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/transfers": {
+      "post": {
+        "operationId": "transferCash",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": {
+          "201": { "description": "Cash transferred" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/reopen": {
+      "post": {
+        "operationId": "reopenCashSession",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": {
+          "200": { "description": "Cash Session reopened" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/sessions/{sessionId}/handoffs": {
+      "post": {
+        "operationId": "initiateCashShiftHandoff",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/CashSessionId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Cash shift handoff initiated" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/handoffs/{handoffId}": {
+      "get": {
+        "operationId": "getCashShiftHandoff",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "handoffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": { "200": { "description": "Authoritative handoff state" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/handoffs/{handoffId}/count": {
+      "post": {
+        "operationId": "countCashShiftHandoff",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "handoffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Handoff cash counted by backend" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/handoffs/{handoffId}/decision": {
+      "post": {
+        "operationId": "decideCashShiftHandoff",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "handoffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Handoff accepted, rejected or cancelled" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/handoffs/{handoffId}/complete": {
+      "post": {
+        "operationId": "completeCashShiftHandoff",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          {
+            "name": "handoffId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "201": { "description": "Custody transferred after acceptance" } }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/integrations/quarantine": {
+      "get": {
+        "operationId": "listCashIntegrationQuarantine",
+        "description": "Returns a tenant and branch scoped sanitized quarantine projection. Payloads, stack traces and PII are never returned; manual replay remains disabled.",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "name": "branchId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "sourceModule", "in": "query", "schema": { "enum": ["CASH", "SALES"] } },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sanitized quarantine page" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/cash/integrations/status": {
+      "get": {
+        "operationId": "getCashIntegrationOperationalStatus",
+        "description": "Returns backend-authoritative pending, quarantine and local UMI sink counters.",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "name": "branchId", "in": "query", "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Cash integration operational status" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/analytics/overview": {
+      "get": {
+        "operationId": "getAnalyticsOverview",
+        "description": "Returns deterministic read-only Commerce analytics. The to date is exclusive and all money is serialized in exact minor units.",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "name": "branchId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "timezone", "in": "query", "schema": { "type": "string", "default": "UTC" } },
+          {
+            "name": "interval",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["hour", "day", "week", "month"],
+              "default": "day"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Authoritative analytics overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "scope",
+                    "revenue",
+                    "sales",
+                    "payments",
+                    "paymentAttempts",
+                    "cash",
+                    "inventory",
+                    "products",
+                    "timeSeries"
+                  ],
+                  "properties": {
+                    "scope": { "type": "object" },
+                    "revenue": {
+                      "type": "object",
+                      "required": ["grossMinor", "refundedMinor", "netMinor", "collectedMinor"],
+                      "properties": {
+                        "grossMinor": { "$ref": "#/components/schemas/MoneyMinor" },
+                        "refundedMinor": { "$ref": "#/components/schemas/MoneyMinor" },
+                        "netMinor": { "$ref": "#/components/schemas/MoneyMinor" },
+                        "collectedMinor": { "$ref": "#/components/schemas/MoneyMinor" }
+                      }
+                    },
+                    "sales": { "type": "object" },
+                    "payments": { "type": "array", "items": { "type": "object" } },
+                    "paymentAttempts": { "type": "array", "items": { "type": "object" } },
+                    "cash": { "type": "object" },
+                    "inventory": { "type": "object" },
+                    "products": { "type": "array", "items": { "type": "object" } },
+                    "timeSeries": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/overview": {
+      "get": {
+        "operationId": "getSalesOverview",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Authoritative operational Sales overview" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/history": {
+      "get": {
+        "operationId": "searchSalesAdministration",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Paginated, filtered Sales history" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/refunds": {
+      "get": {
+        "operationId": "listSalesRefundsAdministration",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Paginated refund administration list" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/receipts": {
+      "get": {
+        "operationId": "listSalesReceiptsAdministration",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Immutable receipt representations" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/exceptions": {
+      "get": {
+        "operationId": "getSalesOperationalExceptions",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sanitized operational exceptions" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/{saleId}/detail": {
+      "get": {
+        "operationId": "getSaleAdministrationDetail",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sale detail and public module relationships" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/{saleId}/timeline": {
+      "get": {
+        "operationId": "getSaleAdministrationTimeline",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Allowlisted consolidated timeline" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales-administration/{saleId}/diagnostic": {
+      "get": {
+        "operationId": "getSaleDiagnosticBundle",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": { "description": "Sanitized support bundle without secrets or PII" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/device-enrollments": {
+      "post": {
+        "operationId": "createPosDeviceEnrollment",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateDeviceEnrollmentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Single-use enrollment invitation; plaintext token is returned once",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeviceEnrollmentInvitation" }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/device-enrollments/consume": {
+      "post": {
+        "operationId": "consumePosDeviceEnrollment",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ConsumeDeviceEnrollmentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Device enrolled; credential is returned once",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeviceEnrollmentResult" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "410": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices": {
+      "get": {
+        "operationId": "listPosDevices",
+        "parameters": [{ "$ref": "#/components/parameters/OrganizationId" }],
+        "security": [{ "sessionCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Authorized POS terminals",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PosDevice" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices/current": {
+      "get": {
+        "operationId": "getCurrentPosDevice",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/DeviceCredential" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated terminal",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PosDevice" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices/current/heartbeat": {
+      "post": {
+        "operationId": "heartbeatPosDevice",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/DeviceCredential" }
+        ],
+        "responses": {
+          "201": {
+            "description": "Heartbeat accepted",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PosDevice" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices/{deviceId}/revoke": {
+      "post": {
+        "operationId": "revokePosDevice",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/DeviceId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/DeviceReasonRequest" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Device and active credentials revoked" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices/{deviceId}/status": {
+      "patch": {
+        "operationId": "setPosDeviceStatus",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/DeviceId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/DeviceStatusRequest" } }
+          }
+        },
+        "responses": {
+          "200": { "description": "Device status updated" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/devices/{deviceId}/rotate-credential": {
+      "post": {
+        "operationId": "rotatePosDeviceCredential",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/DeviceId" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["idempotencyKey"],
+                "properties": {
+                  "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 160 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Replacement credential returned once" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/v1/organizations/{organizationId}/sales/{saleId}/refunds/{refundId}/approve": {
+      "post": {
+        "operationId": "approveSalesRefund",
+        "parameters": [
+          { "$ref": "#/components/parameters/OrganizationId" },
+          { "$ref": "#/components/parameters/SaleId" },
+          {
+            "name": "refundId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "security": [{ "sessionCookie": [] }],
+        "requestBody": { "$ref": "#/components/requestBodies/CashCompletionCommand" },
+        "responses": { "200": { "description": "Refund approved for authoritative posting" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": { "type": "apiKey", "in": "cookie", "name": "__Host-nexo_session" },
+      "refreshCookie": { "type": "apiKey", "in": "cookie", "name": "__Host-nexo_refresh" }
+    },
+    "parameters": {
+      "OrganizationId": {
+        "name": "organizationId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "DeviceId": {
+        "name": "deviceId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "DeviceCredential": {
+        "name": "X-Nexo-Device-Credential",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 40 },
+        "description": "Opaque revocable device credential"
+      },
+      "CashSessionId": {
+        "name": "sessionId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "ProductId": {
+        "name": "productId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "ReservationId": {
+        "name": "reservationId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "TransferId": {
+        "name": "transferId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "VariantQuery": {
+        "name": "variantId",
+        "in": "query",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "LocationQuery": {
+        "name": "locationId",
+        "in": "query",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "BranchId": {
+        "name": "branchId",
+        "in": "query",
+        "required": false,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "BranchPathId": {
+        "name": "branchId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "InvitationId": {
+        "name": "invitationId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "MembershipId": {
+        "name": "membershipId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "FeatureKey": {
+        "name": "featureKey",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+      },
+      "VersionQuery": {
+        "name": "version",
+        "in": "query",
+        "required": true,
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "UserId": {
+        "name": "userId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "SessionId": {
+        "name": "sessionId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "SaleId": {
+        "name": "saleId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 8, "maxLength": 160 }
+      },
+      "ExpectedVersion": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "description": "Optimistic aggregate version.",
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "CsrfToken": {
+        "name": "x-csrf-token",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 32, "maxLength": 256 }
+      }
+    },
+    "responses": {
+      "Problem": {
+        "description": "RFC 9457 Problem Details",
+        "content": {
+          "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } }
+        }
+      }
+    },
+    "requestBodies": {
+      "CashCompletionCommand": {
+        "required": true,
+        "content": { "application/json": { "schema": { "type": "object", "minProperties": 1 } } }
+      },
+      "Version": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["version"],
+              "properties": { "version": { "type": "integer", "minimum": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "CreateDeviceEnrollmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["idempotencyKey"],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 160 },
+          "capabilities": { "type": "object" },
+          "expiresInMinutes": { "type": "integer", "minimum": 1, "maximum": 30 }
+        }
+      },
+      "ConsumeDeviceEnrollmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "name",
+          "platform",
+          "appVersion",
+          "fingerprintHash",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "token": { "type": "string", "minLength": 40, "maxLength": 600 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "platform": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "appVersion": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "fingerprintHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 160 },
+          "capabilities": { "type": "object" }
+        }
+      },
+      "PosDevice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "name",
+          "platform",
+          "appVersion",
+          "status",
+          "capabilities",
+          "enrolledAt",
+          "version"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "branchId": { "type": ["string", "null"], "format": "uuid" },
+          "name": { "type": "string" },
+          "platform": { "type": "string" },
+          "appVersion": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "ACTIVE", "DISABLED", "REVOKED", "OUTDATED", "MAINTENANCE"]
+          },
+          "capabilities": { "type": "object" },
+          "enrolledAt": { "type": "string", "format": "date-time" },
+          "lastSeenAt": { "type": ["string", "null"], "format": "date-time" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "DeviceEnrollmentInvitation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "organizationId", "token", "expiresAt", "status"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "branchId": { "type": ["string", "null"], "format": "uuid" },
+          "token": { "type": "string", "writeOnly": true },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" }
+        }
+      },
+      "DeviceEnrollmentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["device", "credential"],
+        "properties": {
+          "device": { "$ref": "#/components/schemas/PosDevice" },
+          "credential": { "type": "string", "writeOnly": true }
+        }
+      },
+      "DeviceReasonRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason"],
+        "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "DeviceStatusRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "reason"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ACTIVE", "DISABLED"] },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      },
+      "PaymentOutcome": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "paymentAttemptId",
+          "paymentIntentId",
+          "saleId",
+          "amountMinor",
+          "currency",
+          "status",
+          "lastCheckedAt",
+          "retryGuidance",
+          "safeDisplayReference"
+        ],
+        "properties": {
+          "paymentAttemptId": { "type": "string", "format": "uuid" },
+          "paymentIntentId": { "type": "string", "format": "uuid" },
+          "saleId": { "type": "string", "format": "uuid" },
+          "amountMinor": { "type": "string", "pattern": "^\\d+$" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "approved",
+              "declined",
+              "cancelled",
+              "failed",
+              "unknown",
+              "reversed",
+              "refunded"
+            ]
+          },
+          "lastCheckedAt": { "type": "string", "format": "date-time" },
+          "retryGuidance": { "type": "string", "enum": ["QUERY_ONLY_DO_NOT_RECREATE", "TERMINAL"] },
+          "safeDisplayReference": { "type": "string" }
+        }
+      },
+      "CreateCashRegisterCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["branchId", "name", "code", "currency"],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "code": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "openingFloatMinor": { "type": "string", "pattern": "^\\d+$" }
+        }
+      },
+      "CreateCashDrawerCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["branchId", "name", "code"],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "minLength": 1 },
+          "code": { "type": "string", "minLength": 1 },
+          "registerId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "UpdateCashRegisterCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status", "version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "status": { "enum": ["ACTIVE", "INACTIVE", "MAINTENANCE", "ARCHIVED"] },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "UpdateCashDrawerCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status", "version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "status": {
+            "enum": ["AVAILABLE", "ASSIGNED", "IN_USE", "OUT_OF_SERVICE", "ARCHIVED"]
+          },
+          "registerId": { "type": "string", "format": "uuid" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "OpenCashSessionCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branchId",
+          "registerId",
+          "currency",
+          "businessDate",
+          "openingFloatMinor",
+          "idempotencyKey",
+          "correlationId"
+        ],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "registerId": { "type": "string", "format": "uuid" },
+          "drawerId": { "type": "string", "format": "uuid" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "businessDate": { "type": "string", "format": "date" },
+          "openingFloatMinor": { "type": "string", "pattern": "^\\d+$" },
+          "idempotencyKey": { "type": "string", "minLength": 8 },
+          "correlationId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "RecordCashMovementCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "amountMinor",
+          "currency",
+          "reason",
+          "idempotencyKey",
+          "correlationId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "CASH_IN",
+              "CASH_OUT",
+              "PAID_OUT",
+              "CHANGE_IN",
+              "CHANGE_OUT",
+              "WITHDRAWAL",
+              "DEPOSIT"
+            ]
+          },
+          "amountMinor": { "type": "string", "pattern": "^[1-9]\\d*$" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "reason": { "type": "string", "minLength": 1 },
+          "reference": { "type": "string" },
+          "idempotencyKey": { "type": "string", "minLength": 8 },
+          "correlationId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "CountCashCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["currency", "idempotencyKey"],
+        "properties": {
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "totalMinor": { "type": "string", "pattern": "^\\d+$" },
+          "denominations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["denominationMinor", "quantity"],
+              "properties": {
+                "denominationMinor": { "type": "string", "pattern": "^[1-9]\\d*$" },
+                "quantity": { "type": "integer", "minimum": 0 }
+              }
+            }
+          },
+          "idempotencyKey": { "type": "string", "minLength": 8 }
+        }
+      },
+      "CloseCashSessionCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "idempotencyKey"],
+        "properties": {
+          "version": { "type": "integer", "minimum": 1 },
+          "idempotencyKey": { "type": "string", "minLength": 8 },
+          "force": { "type": "boolean", "default": false },
+          "reason": { "type": "string" }
+        }
+      },
+      "MoneyMinor": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)$",
+        "description": "Integer minor units serialized as string; never float."
+      },
+      "Quantity": {
+        "type": "string",
+        "pattern": "^(?!0(?:\\.0{1,6})?$)(?:0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,6})?$"
+      },
+      "CreateSaleInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["branchId", "currency", "channel", "businessDate"],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "channel": {
+            "type": "string",
+            "enum": ["WEB_POS", "FLUTTER_POS", "UMI", "API", "IMPORT"]
+          },
+          "businessDate": { "type": "string", "format": "date" },
+          "externalReference": { "type": "string", "maxLength": 200 },
+          "notes": { "type": "string", "maxLength": 1000 }
+        }
+      },
+      "AddSaleItemInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["productVariantId", "quantity"],
+        "properties": {
+          "productVariantId": { "type": "string", "format": "uuid" },
+          "quantity": { "$ref": "#/components/schemas/Quantity" },
+          "notes": { "type": "string", "maxLength": 500 }
+        }
+      },
+      "PaymentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "amountMinor"],
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": ["CASH", "CARD_EXTERNAL", "BANK_TRANSFER", "OTHER"]
+          },
+          "amountMinor": { "$ref": "#/components/schemas/MoneyMinor" },
+          "tenderedMinor": { "$ref": "#/components/schemas/MoneyMinor" },
+          "providerReference": { "type": "string", "maxLength": 200 }
+        }
+      },
+      "ReasonInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason"],
+        "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 500 } }
+      },
+      "RefundInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lines"],
+        "properties": {
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["saleItemId", "quantity", "amountMinor", "destination", "reason"],
+              "properties": {
+                "saleItemId": { "type": "string", "format": "uuid" },
+                "quantity": { "$ref": "#/components/schemas/Quantity" },
+                "amountMinor": {
+                  "allOf": [{ "$ref": "#/components/schemas/MoneyMinor" }],
+                  "description": "Expected prorated amount in minor units. The server recalculates it from the immutable sold line using HALF_UP and rejects any mismatch."
+                },
+                "destination": {
+                  "type": "string",
+                  "enum": ["AVAILABLE", "DAMAGED", "QUARANTINE", "DISCARDED"]
+                },
+                "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+              }
+            }
+          }
+        }
+      },
+      "InventoryLocationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["branchId", "type", "code", "name"],
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "parentId": { "type": "string", "format": "uuid" },
+          "type": { "enum": ["BRANCH", "WAREHOUSE", "ZONE", "SHELF", "BIN"] },
+          "code": { "type": "string", "maxLength": 80 },
+          "name": { "type": "string", "maxLength": 160 }
+        }
+      },
+      "InventoryLocationUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "branchId": { "type": "string", "format": "uuid" },
+          "type": { "enum": ["BRANCH", "WAREHOUSE", "ZONE", "SHELF", "BIN"] },
+          "code": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "active": { "type": "boolean" }
+        }
+      },
+      "InventoryMovementInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "variantId",
+          "locationId",
+          "type",
+          "state",
+          "quantity",
+          "reason",
+          "occurredAt",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "locationId": { "type": "string", "format": "uuid" },
+          "type": {
+            "enum": [
+              "PURCHASE",
+              "ADJUSTMENT",
+              "WASTE",
+              "CONSUMPTION",
+              "RETURN",
+              "CORRECTION",
+              "IMPORT"
+            ]
+          },
+          "state": { "enum": ["ON_HAND"] },
+          "quantity": { "type": "string" },
+          "unitCost": { "type": "string" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "reason": { "type": "string" },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "idempotencyKey": { "type": "string", "minLength": 8 }
+        }
+      },
+      "Availability": {
+        "type": "object",
+        "required": [
+          "onHand",
+          "available",
+          "reserved",
+          "committed",
+          "inTransit",
+          "damaged",
+          "quarantine"
+        ],
+        "properties": {
+          "onHand": { "type": "string" },
+          "available": { "type": "string" },
+          "reserved": { "type": "string" },
+          "committed": { "type": "string" },
+          "inTransit": { "type": "string" },
+          "damaged": { "type": "string" },
+          "quarantine": { "type": "string" }
+        }
+      },
+      "ReservationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "variantId",
+          "locationId",
+          "quantity",
+          "sourceType",
+          "sourceId",
+          "expiresAt",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "locationId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "string", "pattern": "^(0|[1-9]\\d{0,13})(\\.\\d{1,6})?$" },
+          "sourceType": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "sourceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 160 }
+        }
+      },
+      "ReleaseInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reason", "idempotencyKey"],
+        "properties": {
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 150 }
+        }
+      },
+      "TransferInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variantId", "fromLocationId", "toLocationId", "quantity", "idempotencyKey"],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "fromLocationId": { "type": "string", "format": "uuid" },
+          "toLocationId": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "string", "pattern": "^(0|[1-9]\\d{0,13})(\\.\\d{1,6})?$" },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 150 }
+        }
+      },
+      "CompleteInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["idempotencyKey"],
+        "properties": {
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 150 }
+        }
+      },
+      "CountInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variantId", "locationId", "countedQuantity", "reason", "idempotencyKey"],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "locationId": { "type": "string", "format": "uuid" },
+          "countedQuantity": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d{0,13})(\\.\\d{1,6})?$"
+          },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 160 }
+        }
+      },
+      "InventoryPolicyInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variantId", "allowNegative", "costMethod"],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "allowNegative": { "type": "boolean" },
+          "costMethod": { "enum": ["FIFO"] }
+        }
+      },
+      "ProductType": {
+        "type": "string",
+        "enum": [
+          "PHYSICAL",
+          "SERVICE",
+          "BUNDLE",
+          "KIT",
+          "COMPOSITE",
+          "DIGITAL",
+          "GIFT_CARD",
+          "SUBSCRIPTION",
+          "CUSTOM"
+        ]
+      },
+      "ProductStatus": { "type": "string", "enum": ["DRAFT", "ACTIVE", "ARCHIVED", "DISABLED"] },
+      "OperationalProductType": {
+        "type": "string",
+        "enum": ["PHYSICAL", "SERVICE"]
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "tenantId", "name", "type", "status", "version"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "sku": { "type": ["string", "null"], "maxLength": 100 },
+          "name": { "type": "string" },
+          "type": { "$ref": "#/components/schemas/ProductType" },
+          "status": { "$ref": "#/components/schemas/ProductStatus" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "CreateProduct": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "sku": { "type": "string", "maxLength": 100 },
+          "type": { "$ref": "#/components/schemas/OperationalProductType" },
+          "shortName": { "type": "string", "maxLength": 100 },
+          "description": { "type": "string", "maxLength": 10000 },
+          "unitCode": { "type": "string", "maxLength": 16 },
+          "searchTerms": { "type": "array", "items": { "type": "string" } },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "iconKey": { "type": "string", "maxLength": 40 }
+        }
+      },
+      "UpdateProduct": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "sku": { "type": "string", "maxLength": 100 },
+          "type": { "$ref": "#/components/schemas/ProductType" },
+          "shortName": { "type": "string", "maxLength": 100 },
+          "description": { "type": "string", "maxLength": 10000 },
+          "searchTerms": { "type": "array", "items": { "type": "string" } },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "iconKey": { "type": "string", "maxLength": 80 },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "CreateVariant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "optionValues"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "sku": { "type": "string", "maxLength": 100 },
+          "optionValues": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      },
+      "CreateBarcode": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "value"],
+        "properties": {
+          "type": { "enum": ["EAN", "UPC", "GTIN", "QR", "INTERNAL"] },
+          "value": { "type": "string", "maxLength": 256 },
+          "variantId": { "type": "string", "format": "uuid" },
+          "isPrimary": { "type": "boolean" }
+        }
+      },
+      "CreatePrice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variantId", "amount", "currency"],
+        "properties": {
+          "variantId": { "type": "string", "format": "uuid" },
+          "amount": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,13})(\\.[0-9]{1,6})?$" },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "taxProfileKey": { "type": "string" },
+          "unitCode": { "type": "string" }
+        }
+      },
+      "CreateCategory": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "slug"],
+        "properties": {
+          "name": { "type": "string" },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "parentId": { "type": "string", "format": "uuid" },
+          "sortOrder": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "PrepareMedia": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contentType", "altText", "fileName"],
+        "properties": {
+          "contentType": { "enum": ["image/jpeg", "image/png", "image/webp"] },
+          "altText": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "fileName": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$" },
+          "variantId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "CompleteMedia": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mediaId"],
+        "properties": {
+          "mediaId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["email", "password", "deviceFingerprint", "deviceName"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "maxLength": 320 },
+          "password": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "rememberMe": { "type": "boolean", "default": false },
+          "rememberDevice": { "type": "boolean", "default": false },
+          "deviceFingerprint": { "type": "string", "minLength": 16, "maxLength": 128 },
+          "deviceName": { "type": "string", "minLength": 1, "maxLength": 160 }
+        }
+      },
+      "EmailRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["email"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "maxLength": 320 }
+        }
+      },
+      "PasswordResetCompleteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "password"],
+        "properties": {
+          "token": { "type": "string", "minLength": 32, "maxLength": 256 },
+          "password": { "type": "string", "minLength": 15, "maxLength": 128 }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 32, "maxLength": 256 }
+        }
+      },
+      "AuthStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": { "status": { "enum": ["authenticated", "refreshed"] } }
+      },
+      "AcceptedStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": { "status": { "const": "accepted" } }
+      },
+      "AuthenticatedIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "userId", "email", "displayName", "emailVerified", "mfaStatus"],
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "displayName": { "type": "string" },
+          "emailVerified": { "type": "boolean" },
+          "mfaStatus": { "enum": ["NOT_ENROLLED", "ENROLLED", "REQUIRED"] }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["displayName", "givenName", "familyName", "locale", "timeZone", "preferences"],
+        "properties": {
+          "displayName": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "givenName": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "familyName": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "locale": { "type": "string", "minLength": 2, "maxLength": 35 },
+          "timeZone": { "type": "string", "minLength": 1, "maxLength": 63 },
+          "avatarUrl": { "type": "string", "format": "uri", "maxLength": 2048 },
+          "preferences": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "PrepareProfileAvatarRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contentType", "fileName", "size"],
+        "properties": {
+          "contentType": { "enum": ["image/png", "image/jpeg", "image/webp"] },
+          "fileName": { "type": "string", "minLength": 1, "maxLength": 180 },
+          "size": { "type": "integer", "minimum": 1, "maximum": 5242880 }
+        }
+      },
+      "CompleteProfileAvatarRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["objectKey"],
+        "properties": { "objectKey": { "type": "string", "minLength": 20, "maxLength": 500 } }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "deviceId",
+          "deviceName",
+          "ipAddress",
+          "userAgent",
+          "location",
+          "trustLevel",
+          "createdAt",
+          "lastActivityAt",
+          "idleExpiresAt",
+          "absoluteExpiresAt",
+          "current"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "deviceId": { "type": ["string", "null"], "format": "uuid" },
+          "deviceName": { "type": ["string", "null"] },
+          "ipAddress": { "type": "string" },
+          "userAgent": { "type": "string" },
+          "location": { "type": ["string", "null"] },
+          "trustLevel": { "enum": ["UNTRUSTED", "RECOGNIZED"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastActivityAt": { "type": "string", "format": "date-time" },
+          "idleExpiresAt": { "type": "string", "format": "date-time" },
+          "absoluteExpiresAt": { "type": "string", "format": "date-time" },
+          "current": { "type": "boolean" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "givenName",
+          "familyName",
+          "displayName",
+          "locale",
+          "timeZone",
+          "regionalFormat",
+          "createdAt",
+          "updatedAt",
+          "statusChangedAt"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "status": {
+            "enum": [
+              "PENDING_VERIFICATION",
+              "ACTIVE",
+              "LOCKED",
+              "SUSPENDED",
+              "DISABLED",
+              "DELETED",
+              "EXPIRED"
+            ]
+          },
+          "givenName": { "type": "string", "maxLength": 100 },
+          "familyName": { "type": "string", "maxLength": 100 },
+          "displayName": { "type": "string", "maxLength": 160 },
+          "avatarUrl": { "type": ["string", "null"], "format": "uri", "maxLength": 2048 },
+          "locale": { "type": "string", "maxLength": 35 },
+          "timeZone": { "type": "string", "maxLength": 63 },
+          "regionalFormat": { "type": "string", "maxLength": 35 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "statusChangedAt": { "type": "string", "format": "date-time" },
+          "lastAccessedAt": { "type": ["string", "null"], "format": "date-time" },
+          "deletedAt": { "type": ["string", "null"], "format": "date-time" },
+          "preferences": { "type": "object" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "Identity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["userId", "status", "features"],
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/User/properties/status" },
+          "features": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["oauth", "sso", "passkeys", "webauthn", "magicLinks", "passwordless"],
+            "properties": {
+              "oauth": { "type": "boolean" },
+              "sso": { "type": "boolean" },
+              "passkeys": { "type": "boolean" },
+              "webauthn": { "type": "boolean" },
+              "magicLinks": { "type": "boolean" },
+              "passwordless": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "EmailIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "userId", "address", "status", "primary", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "address": { "type": "string", "format": "email", "maxLength": 320 },
+          "status": { "enum": ["PENDING", "VERIFIED", "REVOKED"] },
+          "primary": { "type": "boolean" },
+          "verifiedAt": { "type": ["string", "null"], "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "status",
+          "countryCode",
+          "defaultLocale",
+          "defaultCurrency",
+          "timeZone",
+          "version"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "enum": ["ACTIVE", "SUSPENDED", "OFFBOARDING"] },
+          "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+          "defaultLocale": { "type": "string" },
+          "defaultCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "timeZone": { "type": "string" },
+          "branding": { "type": "object" },
+          "settings": { "type": "object" },
+          "legalTaxId": { "type": ["string", "null"] },
+          "address": { "type": "object" },
+          "dateFormat": { "type": "string" },
+          "timeFormat": { "enum": ["12h", "24h"] },
+          "moneyFormat": { "type": "string" },
+          "regionalSettings": { "type": "object" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "OrganizationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "slug",
+          "countryCode",
+          "defaultCurrency",
+          "defaultLocale",
+          "timeZone",
+          "businessType"
+        ],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+          "defaultCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "defaultLocale": { "type": "string", "maxLength": 35 },
+          "timeZone": { "type": "string", "maxLength": 63 },
+          "businessType": { "$ref": "#/components/schemas/BusinessType" },
+          "templateKey": { "type": "string", "maxLength": 64 }
+        }
+      },
+      "OrganizationUpdate": {
+        "type": "object",
+        "required": ["version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "defaultLocale": { "type": "string" },
+          "defaultCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "timeZone": { "type": "string" },
+          "branding": { "type": "object" },
+          "settings": { "type": "object" },
+          "legalTaxId": { "type": ["string", "null"], "maxLength": 32 },
+          "address": { "type": "object" },
+          "countryCode": { "type": "string", "pattern": "^[A-Z]{2}$" },
+          "dateFormat": { "type": "string", "maxLength": 32 },
+          "timeFormat": { "enum": ["12h", "24h"] },
+          "moneyFormat": { "type": "string", "maxLength": 32 },
+          "regionalSettings": { "type": "object" },
+          "version": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      },
+      "Branch": {
+        "type": "object",
+        "required": ["id", "tenantId", "code", "name", "status", "version"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "enum": ["ACTIVE", "INACTIVE", "ARCHIVED"] },
+          "businessHours": { "type": "object" },
+          "settings": { "type": "object" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "BranchCreate": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "businessHours": { "type": "object" },
+          "settings": { "type": "object" },
+          "timeZone": { "type": "string", "maxLength": 63 },
+          "locale": { "type": "string", "maxLength": 35 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+        },
+        "additionalProperties": false
+      },
+      "BranchUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "name", "version"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "businessHours": { "type": "object" },
+          "settings": { "type": "object" },
+          "timeZone": { "type": "string", "maxLength": 63 },
+          "locale": { "type": "string", "maxLength": 35 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "VersionCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version"],
+        "properties": { "version": { "type": "integer", "minimum": 1 } }
+      },
+      "BusinessType": {
+        "enum": [
+          "RETAIL_STORE",
+          "RESTAURANT",
+          "COFFEE_SHOP",
+          "BARBER_SHOP",
+          "BEAUTY_SALON",
+          "TATTOO_STUDIO",
+          "SERVICE_BUSINESS",
+          "OTHER"
+        ]
+      },
+      "BusinessTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "name",
+          "businessType",
+          "description",
+          "version",
+          "features",
+          "initialSettings",
+          "categorySuggestions",
+          "suggestedPermissions"
+        ],
+        "properties": {
+          "key": { "type": "string" },
+          "name": { "type": "string" },
+          "businessType": { "$ref": "#/components/schemas/BusinessType" },
+          "description": { "type": "string" },
+          "version": { "type": "integer", "minimum": 1 },
+          "features": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+          "initialSettings": { "type": "object" },
+          "categorySuggestions": { "type": "array", "items": { "type": "string" } },
+          "suggestedPermissions": { "type": "object" }
+        }
+      },
+      "Onboarding": {
+        "type": "object",
+        "required": ["tenantId", "status", "currentStep", "version", "answers"],
+        "properties": {
+          "tenantId": { "type": "string", "format": "uuid" },
+          "status": { "enum": ["DRAFT", "COMPLETED"] },
+          "currentStep": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "businessType": { "$ref": "#/components/schemas/BusinessType" },
+          "templateKey": { "type": ["string", "null"] },
+          "templateVersion": { "type": ["integer", "null"] },
+          "answers": { "type": "object" },
+          "version": { "type": "integer", "minimum": 1 },
+          "completedAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "OnboardingUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["currentStep", "businessType", "templateKey", "answers", "version"],
+        "properties": {
+          "currentStep": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "businessType": { "$ref": "#/components/schemas/BusinessType" },
+          "templateKey": { "type": "string" },
+          "answers": { "type": "object" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "FeatureUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["enabled", "version"],
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "Invitation": {
+        "type": "object",
+        "required": [
+          "id",
+          "tenantId",
+          "email",
+          "roleKey",
+          "accessScope",
+          "status",
+          "expiresAt",
+          "resendCount",
+          "version"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "roleKey": { "$ref": "#/components/schemas/RoleKey" },
+          "accessScope": { "enum": ["ALL_BRANCHES", "RESTRICTED"] },
+          "status": { "enum": ["PENDING", "ACCEPTED", "REVOKED", "EXPIRED"] },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "resendCount": { "type": "integer", "minimum": 0 },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "InvitationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["email", "roleKey", "accessScope", "branchIds"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "maxLength": 320 },
+          "roleKey": { "$ref": "#/components/schemas/RoleKey" },
+          "accessScope": { "enum": ["ALL_BRANCHES", "RESTRICTED"] },
+          "branchIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "MembershipUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["roleKey", "status", "accessScope", "branchIds", "version"],
+        "properties": {
+          "roleKey": { "$ref": "#/components/schemas/RoleKey" },
+          "status": { "enum": ["ACTIVE", "SUSPENDED", "REVOKED"] },
+          "accessScope": { "enum": ["ALL_BRANCHES", "RESTRICTED"] },
+          "branchIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "Membership": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenantId",
+          "principalId",
+          "role",
+          "roles",
+          "accessScope",
+          "branchIds",
+          "status",
+          "version"
+        ],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "tenantId": { "type": "string", "format": "uuid" },
+          "principalId": { "type": "string", "format": "uuid" },
+          "role": { "enum": ["OWNER", "ADMIN", "SUPERVISOR", "CASHIER", "EMPLOYEE", "ACCOUNTANT"] },
+          "roles": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/components/schemas/RoleKey" }
+          },
+          "accessScope": { "enum": ["ALL_BRANCHES", "RESTRICTED"] },
+          "branchIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "format": "uuid" }
+          },
+          "status": { "enum": ["ACTIVE", "SUSPENDED", "REVOKED"] },
+          "version": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "MembershipCreate": {
+        "type": "object",
+        "required": ["principalId", "role", "accessScope"],
+        "properties": {
+          "principalId": { "type": "string", "format": "uuid" },
+          "role": { "enum": ["OWNER", "ADMIN", "SUPERVISOR", "CASHIER", "EMPLOYEE", "ACCOUNTANT"] },
+          "accessScope": { "enum": ["ALL_BRANCHES", "RESTRICTED"] },
+          "branchIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoleKey": {
+        "type": "string",
+        "enum": ["OWNER", "ADMINISTRATOR", "SUPERVISOR", "CASHIER", "EMPLOYEE", "READ_ONLY"]
+      },
+      "AuthorizationScope": {
+        "type": "string",
+        "enum": ["GLOBAL", "ORGANIZATION", "BRANCH", "SELF", "CUSTOM"]
+      },
+      "AuthorizationGrant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assignmentId", "role", "permission", "scope"],
+        "properties": {
+          "assignmentId": { "type": "string", "format": "uuid" },
+          "role": { "$ref": "#/components/schemas/RoleKey" },
+          "permission": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+          "scope": { "$ref": "#/components/schemas/AuthorizationScope" },
+          "branchId": { "type": "string", "format": "uuid" },
+          "customScope": { "type": "string", "maxLength": 160 },
+          "validFrom": { "type": "string", "format": "date-time" },
+          "validUntil": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TenantContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tenantId", "principalId", "membershipId", "branchIds"],
+        "properties": {
+          "tenantId": { "type": "string", "format": "uuid" },
+          "principalId": { "type": "string", "format": "uuid" },
+          "membershipId": { "type": "string", "format": "uuid" },
+          "branchIds": {
+            "oneOf": [
+              { "const": "ALL_BRANCHES" },
+              {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "format": "uuid" }
+              }
+            ]
+          }
+        }
+      },
+      "ProductFeatures": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "POS",
+          "INVENTORY",
+          "APPOINTMENTS",
+          "KITCHEN",
+          "LOYALTY",
+          "REPORTS",
+          "MARKETPLACE",
+          "ECOMMERCE"
+        ],
+        "properties": {
+          "POS": { "type": "boolean" },
+          "INVENTORY": { "type": "boolean" },
+          "APPOINTMENTS": { "type": "boolean" },
+          "KITCHEN": { "type": "boolean" },
+          "LOYALTY": { "type": "boolean" },
+          "REPORTS": { "type": "boolean" },
+          "MARKETPLACE": { "type": "boolean" },
+          "ECOMMERCE": { "type": "boolean" }
+        }
+      },
+      "AuthorizationContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tenantContext",
+          "organizationStatus",
+          "roles",
+          "grants",
+          "features",
+          "evaluatedAt"
+        ],
+        "properties": {
+          "tenantContext": { "$ref": "#/components/schemas/TenantContext" },
+          "organizationStatus": { "enum": ["ACTIVE", "SUSPENDED", "OFFBOARDING"] },
+          "selectedBranchId": { "type": "string", "format": "uuid" },
+          "roles": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/components/schemas/RoleKey" }
+          },
+          "grants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuthorizationGrant" }
+          },
+          "features": { "$ref": "#/components/schemas/ProductFeatures" },
+          "evaluatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthorizationRole": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "name", "description", "registryVersion", "effective"],
+        "properties": {
+          "key": { "$ref": "#/components/schemas/RoleKey" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "registryVersion": { "type": "integer", "minimum": 1 },
+          "effective": { "type": "boolean" }
+        }
+      },
+      "Permission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "resource",
+          "action",
+          "accessKind",
+          "featureKey",
+          "description",
+          "registryVersion",
+          "effective",
+          "scopes"
+        ],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+          "resource": { "type": "string" },
+          "action": { "type": "string" },
+          "accessKind": { "enum": ["READ", "WRITE", "ADMIN"] },
+          "featureKey": { "type": ["string", "null"] },
+          "description": { "type": "string" },
+          "registryVersion": { "type": "integer", "minimum": 1 },
+          "effective": { "type": "boolean" },
+          "scopes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/components/schemas/AuthorizationScope" }
+          }
+        }
+      },
+      "FeatureFlag": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "name", "enabled", "version"],
+        "properties": {
+          "key": {
+            "enum": [
+              "POS",
+              "INVENTORY",
+              "APPOINTMENTS",
+              "KITCHEN",
+              "LOYALTY",
+              "REPORTS",
+              "MARKETPLACE",
+              "ECOMMERCE"
+            ]
+          },
+          "name": { "type": "string" },
+          "enabled": { "type": "boolean" },
+          "version": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "PermissionEvaluationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["permission", "resource"],
+        "properties": {
+          "permission": { "type": "string", "minLength": 3, "maxLength": 100 },
+          "resource": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "branchId": { "type": "string", "format": "uuid" },
+              "ownerUserId": { "type": "string", "format": "uuid" },
+              "status": { "type": "string", "maxLength": 50 }
+            }
+          }
+        }
+      },
+      "AuthorizationDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["allowed", "permission", "registryVersion", "reason"],
+        "properties": {
+          "allowed": { "type": "boolean" },
+          "permission": { "type": "string" },
+          "registryVersion": { "type": "integer", "minimum": 1 },
+          "reason": {
+            "enum": [
+              "ALLOWED",
+              "UNKNOWN_PERMISSION",
+              "INACTIVE_ACTOR",
+              "INACTIVE_ORGANIZATION",
+              "TENANT_MISMATCH",
+              "FEATURE_DISABLED",
+              "RESOURCE_STATE_DENIED",
+              "NO_ACTIVE_GRANT",
+              "SCOPE_MISMATCH"
+            ]
+          },
+          "grantedBy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["assignmentId", "role", "scope"],
+            "properties": {
+              "assignmentId": { "type": "string", "format": "uuid" },
+              "role": { "$ref": "#/components/schemas/RoleKey" },
+              "scope": { "$ref": "#/components/schemas/AuthorizationScope" }
+            }
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": ["type", "title", "status"],
+        "properties": {
+          "type": { "type": "string", "format": "uri-reference" },
+          "title": { "type": "string" },
+          "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+          "detail": { "type": "string" },
+          "instance": { "type": "string", "format": "uri-reference" }
+        }
+      }
+    }
+  }
+}
