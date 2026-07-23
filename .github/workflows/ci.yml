@@ -90,7 +90,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:ui
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: design-system-failures
           path: |
@@ -121,7 +121,7 @@ jobs:
       - run: cd packages/nexo_flutter_design && flutter analyze
       - run: cd packages/nexo_flutter_design && flutter test
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flutter-foundation-failures
           path: packages/nexo_flutter_design/test/failures
