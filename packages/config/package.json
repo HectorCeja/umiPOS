@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@nexo/identity": "workspace:*",
-    "zod": "4.0.10"
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@nexo/typescript-config": "workspace:*",
