@@ -2,10 +2,12 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanBusiness } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
-const organizationId = '10000000-0000-4000-8000-000000000001';
+let organizationId: string;
+let fixtureEmail: string;
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const artifacts = path.resolve('artifacts/ui-polish');
 
@@ -17,7 +19,7 @@ async function login(context: BrowserContext) {
   const response = await context.request.post(`${api}/v1/auth/login`, {
     headers: { origin: web },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmail,
       password,
       deviceFingerprint: `ui-polish-${Date.now()}`,
       deviceName: 'UI polish review',
@@ -43,6 +45,9 @@ test.describe.serial('UI polish owner review evidence', () => {
   test.beforeAll(async () => {
     await mkdir(path.join(artifacts, 'screens'), { recursive: true });
     await mkdir(path.join(artifacts, 'videos'), { recursive: true });
+    const fixture = createCleanBusiness();
+    organizationId = fixture.organizationId;
+    fixtureEmail = fixture.email;
   });
 
   test('Login removes client review and keeps the cinematic essentials', async ({ browser }) => {
@@ -77,8 +82,14 @@ test.describe.serial('UI polish owner review evidence', () => {
     ).toBe(true);
     await screenshot(page, 'onboarding-welcome.png');
     for (let step = 1; step <= 7; step += 1) {
-      await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
+      const advance = page.getByRole('button', { name: /Empezar|Continuar/ });
+      await expect(advance).toBeEnabled();
+      await advance.click();
       await expect(page.locator('.guided-onboarding')).toHaveAttribute('data-step', String(step));
+      if (step === 1) {
+        await page.getByLabel('Nombre comercial').fill('Negocio UI Polish');
+      }
+      if (step === 2) await page.getByRole('button', { name: /Cafetería/ }).click();
     }
     const scrollOwner = page.locator('.onboarding-content');
     expect(

@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { onePixelPng, setOnboardingStep, web } from './owner-corrective.helpers';
+import { chooseCustomNexoSelect, onePixelPng, setOnboardingStep } from './owner-corrective.helpers';
+import { createCleanBusiness, loginClean } from './dynamic-context.helpers';
 
 export const realProductImage = {
   name: 'owner-position.png',
@@ -9,16 +9,14 @@ export const realProductImage = {
 };
 
 export async function openCatalog(page: Page) {
-  execFileSync('pnpm', ['owner:alpha2:reset'], { stdio: 'pipe' });
-  await page.goto(`${web}/login`);
-  await page.getByLabel('Correo electrónico').fill('alpha2.owner@nexo.local');
-  await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
+  const fixture = createCleanBusiness();
+  await loginClean(page, fixture.email);
   await page.locator('.guided-onboarding').waitFor();
   await setOnboardingStep(page, 7);
   await page.getByRole('radio', { name: /Catálogo vacío/ }).check();
   const form = page.locator('.onboarding-product-builder');
   await form.getByLabel('Nombre').fill('Latte geometría real');
-  await form.getByLabel('Categoría').fill('Bebidas');
+  await chooseCustomNexoSelect(page, 'Categoría', 'Bebidas');
   await form.getByLabel('Precio sugerido (MXN)').fill('82.50');
   await form.getByLabel('Descripción').fill('Producto estable durante toda la subida');
   await form.getByLabel('SKU (opcional)').fill('GEO-REAL');

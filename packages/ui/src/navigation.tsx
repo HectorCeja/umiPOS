@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, Card, SearchInput } from './primitives.js';
 import { NexoIcon } from './iconography.js';
 import { Dialog } from './overlays.js';
@@ -128,7 +128,15 @@ export function CommandPalette({
   onClose: () => void;
 }) {
   const id = useId();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => searchRef.current?.focus());
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [open]);
   const filtered = commands.filter((command) =>
     command.label.toLocaleLowerCase('es-MX').includes(query.toLocaleLowerCase('es-MX')),
   );
@@ -146,12 +154,19 @@ export function CommandPalette({
       className="nexo-command-palette"
     >
       <SearchInput
+        ref={searchRef}
         id={id}
         label="Buscar acciones"
         value={query}
         autoFocus
         onChange={(event) => {
           setQuery(event.currentTarget.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            onClose();
+          }
         }}
       />
       <Card role="listbox" aria-label="Resultados" className="nexo-command-results">

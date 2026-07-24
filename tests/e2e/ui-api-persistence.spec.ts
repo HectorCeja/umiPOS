@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Request, type Response } from '@playwright/test';
+import { chooseCustomNexoSelect } from './owner-corrective.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
@@ -43,10 +44,32 @@ function audit(page: Page): BrowserAudit {
 async function login(page: Page) {
   await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
   await page.locator('.product-main, .guided-onboarding, .products-page').first().waitFor();
-  await page.waitForLoadState('networkidle');
+  await expect(page.getByText('Validando tu sesión…')).toBeHidden();
 }
 
 test.describe.serial('UI ↔ API persistence certification', () => {
+  test.afterEach(async ({ page }) => {
+    const identity = await page.request.get(`${api}/v1/identity`);
+    if (!identity.ok()) return;
+    const csrf =
+      (await page.context().cookies()).find(({ name }) => name === 'nexo_csrf')?.value ?? '';
+    const headers = { origin: web, 'x-csrf-token': csrf };
+    const profile = await page.request.patch(`${api}/v1/profile`, {
+      headers,
+      data: {
+        displayName: 'Alpha Owner',
+        givenName: 'Alpha',
+        familyName: 'Owner',
+        locale: 'es-MX',
+        timeZone: 'America/Mazatlan',
+        preferences: { theme: 'system', density: 'comfortable' },
+      },
+    });
+    expect(profile.ok(), 'canonical profile restoration').toBe(true);
+    const avatar = await page.request.delete(`${api}/v1/profile/avatar`, { headers });
+    expect(avatar.ok(), 'canonical avatar restoration').toBe(true);
+  });
+
   test('expired or absent session cannot submit Product and returns safely after login', async ({
     browser,
   }) => {
@@ -67,7 +90,7 @@ test.describe.serial('UI ↔ API persistence certification', () => {
     await page.getByLabel('Nombre del producto').fill(`Producto UI API ${suffix}`);
     await page.getByLabel('SKU comercial (opcional)').fill(sku);
     await page.getByLabel('Descripción (opcional)').fill('Persistencia real certificada.');
-    await page.getByLabel('Categoría').fill('Integración UI API');
+    await chooseCustomNexoSelect(page, 'Categoría', 'Integración UI API');
     await page.getByLabel('Precio en MXN').fill('55.00');
     await page.getByLabel('Código de barras').fill(`751${suffix.slice(-10)}`);
     await page.getByRole('button', { name: 'Agregar al catálogo' }).click();
@@ -123,7 +146,9 @@ test.describe.serial('UI ↔ API persistence certification', () => {
       ),
     });
     await page.getByRole('button', { name: 'Guardar perfil' }).click();
-    await expect(page.getByText(/Perfil guardado/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/Perfil actualizado\. Tu nombre y tu foto/)).toBeVisible({
+      timeout: 15_000,
+    });
     await page.waitForLoadState('networkidle');
     await page.reload();
     await expect(page.getByRole('textbox', { name: 'Nombre visible *', exact: true })).toHaveValue(

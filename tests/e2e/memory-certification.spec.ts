@@ -11,7 +11,8 @@ test('los recursos de larga vida tienen liberación explícita', () => {
   expect(experience).toContain("removeEventListener('pointermove'");
   expect(experience).toContain("removeEventListener('visibilitychange'");
   expect(shell).toContain('window.clearInterval(timer)');
-  expect(shell).toContain("removeEventListener('nexo:identity-updated'");
+  expect(shell).toContain("window.removeEventListener('keydown', keyboard)");
+  expect(shell).toContain("document.removeEventListener('pointerdown', outside)");
   expect(products).toContain('URL.revokeObjectURL(value)');
   expect(profile).toContain('URL.revokeObjectURL(url)');
   expect(navigation).toContain('observer.disconnect()');

@@ -4,7 +4,7 @@ import {
   completeOnboarding,
   evidence,
   expectClean,
-  login,
+  loginIsolatedOnboarding,
   setOnboardingStep,
   web,
 } from './owner-corrective.helpers';
@@ -13,7 +13,7 @@ test('one authoritative wordmark is used by login, onboarding and dashboard', as
   await page.goto(web);
   await expect(page.getByRole('img', { name: 'NEXO' }).first()).toBeVisible();
   await evidence(page, 'logo-login.png');
-  await login(page);
+  await loginIsolatedOnboarding(page);
   await completeOnboarding(page);
   await page.waitForLoadState('networkidle');
   const audit = browserAudit(page);

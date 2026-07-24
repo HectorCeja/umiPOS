@@ -5,7 +5,9 @@ test('contextual help can close and reopen without blocking the screen', async (
   await login(page);
   const audit = browserAudit(page);
   await page.goto(`${web}/products`);
-  const help = page.getByRole('complementary', { name: 'Ayuda de Cómo administrar Productos' });
+  const help = page.getByRole('complementary', {
+    name: 'Ayuda de Construye un catálogo fácil de vender',
+  });
   await page.getByRole('button', { name: /Ver guía/ }).click();
   await expect(help).toContainText('Producto es lo que vendes');
   await help.getByRole('button', { name: /Cerrar ayuda/ }).click();

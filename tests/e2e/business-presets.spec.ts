@@ -1,24 +1,27 @@
 import { expect, test } from '@playwright/test';
 import {
   browserAudit,
-  login,
+  loginIsolatedOnboarding,
   setOnboardingStep,
   web,
   expectClean,
 } from './owner-corrective.helpers';
 
 test('onboarding ofrece presets reales para catálogo, caja y ubicaciones', async ({ page }) => {
-  await login(page);
+  await loginIsolatedOnboarding(page);
   const audit = browserAudit(page);
   await setOnboardingStep(page, 6);
   await page.waitForLoadState('networkidle');
-  await expect(
-    page.locator('#onboarding-cash-point-presets option[value="Caja principal"]'),
-  ).toHaveCount(1);
+  const cashPoint = page.getByRole('combobox', { name: 'Nombre del punto de cobro' });
+  await expect(cashPoint).toContainText('Caja principal');
+  await cashPoint.click();
+  await expect(page.getByRole('option', { name: 'Caja principal' })).toBeVisible();
+  await page.keyboard.press('Escape');
   await setOnboardingStep(page, 8);
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('#onboarding-location-presets option[value="Mostrador"]')).toHaveCount(
-    1,
-  );
+  const location = page.getByRole('combobox', { name: 'Ubicación inicial' });
+  await location.click();
+  await expect(page.getByRole('option', { name: 'Mostrador' })).toBeVisible();
+  await page.keyboard.press('Escape');
   expectClean(audit);
 });

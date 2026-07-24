@@ -6,6 +6,28 @@ const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const root = path.resolve('artifacts/final-owner-ui-review');
+const artifactMode = process.env.NEXO_E2E_ARTIFACT_MODE === 'evidence';
+
+async function settle(page: Page, evidenceDelay: number) {
+  if (artifactMode) {
+    await page.waitForTimeout(evidenceDelay);
+    return;
+  }
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
+async function dismissContextualHelp(page: Page) {
+  const close = page.getByRole('button', { name: /Cerrar ayuda/ }).first();
+  if (await close.isVisible().catch(() => false)) {
+    await close.click();
+    await expect(close).toBeHidden();
+  }
+}
 
 async function login(context: BrowserContext) {
   const response = await context.request.post(`${api}/v1/auth/login`, {
@@ -30,14 +52,19 @@ async function record(
   const context = await browser.newContext({
     viewport,
     reducedMotion: options.reducedMotion ?? 'no-preference',
-    recordVideo: { dir: path.join(root, 'videos', '.raw'), size: viewport },
+    ...(artifactMode
+      ? { recordVideo: { dir: path.join(root, 'videos', '.raw'), size: viewport } }
+      : {}),
   });
   await login(context);
   const page = await context.newPage();
+  page.setDefaultTimeout(15_000);
+  page.setDefaultNavigationTimeout(30_000);
   await action(page, context);
   const video = page.video();
   await context.close();
-  if (video) await copyFile(await video.path(), path.join(root, 'videos', `${name}.webm`));
+  if (artifactMode && video)
+    await copyFile(await video.path(), path.join(root, 'videos', `${name}.webm`));
 }
 
 test.describe.serial('final owner evidence', () => {
@@ -47,16 +74,19 @@ test.describe.serial('final owner evidence', () => {
   test('records the twelve required interaction journeys', async ({ browser }) => {
     await record(browser, '01-organization-selector', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.getByRole('button', { name: /Organización activa/ }).click();
-      await page.waitForTimeout(1800);
+      await settle(page, 1800);
     });
     await record(browser, '02-branch-selector', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.getByRole('button', { name: /Sucursal activa/ }).click();
-      await page.waitForTimeout(1800);
+      await settle(page, 1800);
     });
     await record(browser, '03-dropdown-flip', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       const trigger = page.getByRole('button', { name: /Sucursal activa/ });
       await trigger.evaluate((element) => {
         Object.assign((element as HTMLElement).style, {
@@ -69,60 +99,68 @@ test.describe.serial('final owner evidence', () => {
         'data-placement',
         /top/,
       );
-      await page.waitForTimeout(1800);
+      await settle(page, 1800);
     });
     await record(browser, '04-selector-after-scroll', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
-      await page.waitForTimeout(700);
+      await settle(page, 700);
       await page.getByRole('button', { name: /Sucursal activa/ }).click();
-      await page.waitForTimeout(1500);
+      await settle(page, 1500);
     });
     await record(browser, '05-selector-after-resize', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.setViewportSize({ width: 1024, height: 768 });
       await page.getByRole('button', { name: /Sucursal activa/ }).click();
-      await page.waitForTimeout(1500);
+      await settle(page, 1500);
     });
     await record(browser, '06-user-menu-simplified', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.getByRole('button', { name: /Abrir menú de usuario/ }).click();
-      await page.waitForTimeout(1800);
+      await settle(page, 1800);
     });
     await record(browser, '07-home-parallax', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       await page.mouse.move(180, 180);
-      await page.waitForTimeout(1300);
+      await settle(page, 1300);
       await page.mouse.move(1120, 620, { steps: 20 });
-      await page.waitForTimeout(2500);
+      await settle(page, 2500);
     });
     await record(browser, '08-home-products-inventory-artwork', async (page) => {
       await page.goto(web);
+      await dismissContextualHelp(page);
       for (const label of ['Productos', 'Inventario']) {
         await page.getByRole('link', { name: label, exact: true }).click();
-        await page.waitForTimeout(1800);
+        await settle(page, 1800);
       }
     });
     await record(browser, '09-sales-cash-artwork', async (page) => {
       await page.goto(`${web}/sales`);
-      await page.waitForTimeout(1500);
+      await dismissContextualHelp(page);
+      await settle(page, 1500);
       await page.getByRole('link', { name: 'Caja', exact: true }).click();
-      await page.waitForTimeout(2200);
+      await settle(page, 2200);
     });
     await record(browser, '10-reports-light-trails', async (page) => {
       await page.goto(`${web}/reports`);
-      await page.waitForTimeout(5000);
+      await dismissContextualHelp(page);
+      await settle(page, 5000);
     });
     await record(
       browser,
       '11-reduced-motion',
       async (page) => {
         await page.goto(`${web}/reports`);
+        await dismissContextualHelp(page);
         await expect(page.locator('.nexo-living-scene__authenticated-artwork')).toHaveCSS(
           'animation-name',
           'none',
         );
-        await page.waitForTimeout(2200);
+        await settle(page, 2200);
       },
       { reducedMotion: 'reduce' },
     );
@@ -131,9 +169,10 @@ test.describe.serial('final owner evidence', () => {
       '12-mobile-context-selector',
       async (page) => {
         await page.goto(web);
+        await dismissContextualHelp(page);
         await page.getByRole('button', { name: 'Abrir navegación' }).click();
         await page.getByRole('button', { name: 'Cambiar organización o sucursal' }).click();
-        await page.waitForTimeout(2200);
+        await settle(page, 2200);
       },
       { width: 390, height: 844 },
     );

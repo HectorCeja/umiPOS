@@ -94,6 +94,7 @@ export default function InventoryLocationsPage() {
         }),
       },
     );
+    await response.arrayBuffer();
     setState(response.ok ? 'success' : response.status === 409 ? 'conflict' : 'error');
     setMessage(
       response.ok
@@ -118,6 +119,7 @@ export default function InventoryLocationsPage() {
         body: JSON.stringify({ active: !item.active }),
       },
     );
+    await response.arrayBuffer();
     setState(response.ok ? 'success' : 'error');
     setMessage(
       response.ok

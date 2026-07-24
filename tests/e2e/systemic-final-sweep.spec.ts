@@ -10,7 +10,8 @@ test('upload, feedback persistente y Select resuelven desde componentes comparti
   ]);
   expect(experience).toContain('PremiumToastPortal');
   expect(onboarding).not.toContain('className="onboarding-content" key={step}');
-  expect(selectCss).toContain('padding-inline-start: var(--nexo-space-4');
+  expect(selectCss).toContain('.nexo-field-wrap');
+  expect(selectCss).toContain('min-inline-size: 0');
   expect(inventory).toContain('scrollIntoView');
   expect(inventory).toContain('is-highlighted');
 });

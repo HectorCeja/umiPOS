@@ -608,6 +608,7 @@ export function PremiumToastPortal({
       root.id = 'nexo-toast-provider';
       root.className = 'nexo-toast-region';
       root.setAttribute('popover', 'manual');
+      root.setAttribute('role', 'region');
       root.setAttribute('aria-label', label ?? 'Notificaciones');
       document.body.append(root);
     }

@@ -1,6 +1,6 @@
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
+import { createCleanUser } from './dynamic-context.helpers';
 
-const alphaOwner = 'alpha.owner@nexo.local';
 const betaOwner = 'beta.owner@nexo.local';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 
@@ -53,9 +53,14 @@ test.describe.serial('Control Plane with real services', () => {
   let csrf: string;
   let organizationId: string;
   let branchId: string;
+  let fixtureOwner: string;
+
+  test.beforeAll(() => {
+    fixtureOwner = createCleanUser('OWNER').email;
+  });
 
   test('creates an organization and completes data-driven onboarding', async () => {
-    ({ context: owner, csrf } = await login(alphaOwner));
+    ({ context: owner, csrf } = await login(fixtureOwner));
     const templates = await owner.get('/v1/business-templates');
     expect(templates.status()).toBe(200);
     expect((await templates.json()) as unknown[]).toHaveLength(8);
@@ -237,6 +242,7 @@ test.describe('Control Plane visual regression', () => {
   test.afterAll(async () => visualSession.dispose());
   for (const surface of ['onboarding', 'organizations', 'branches', 'invitations', 'settings']) {
     test(`${surface} surface`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.context().addCookies(visualCookies);
       await page.goto(`http://localhost:3000/control-plane/${surface}`);
       if (surface === 'onboarding') {
@@ -245,6 +251,22 @@ test.describe('Control Plane visual regression', () => {
       } else {
         await expect(page.getByRole('link', { name: 'NEXO, inicio' })).toBeVisible();
       }
+      await page.evaluate(() => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        for (const image of document.querySelectorAll<HTMLElement>('.avatar img'))
+          image.style.display = 'none';
+        for (const fallback of document.querySelectorAll<HTMLElement>('.avatar__fallback'))
+          fallback.style.display = 'grid';
+        const profileName = document.querySelector<HTMLElement>('.profile-trigger strong');
+        if (profileName) profileName.textContent = 'Alpha Owner';
+        for (const skip of document.querySelectorAll<HTMLElement>('.nexo-skip-link'))
+          skip.style.display = 'none';
+      });
+      await page.evaluate(async () => {
+        await Promise.all(
+          document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+        );
+      });
       await expect(page).toHaveScreenshot(`${surface}.png`, {
         animations: 'disabled',
         fullPage: true,

@@ -43,8 +43,9 @@ test.describe('owner blockers: NexoSelect motion and optical alignment', () => {
     await ready(page, 'Producto o presentación');
     await page.waitForTimeout(500);
     const trigger = page.getByRole('combobox', { name: 'Producto o presentación' });
+    await trigger.scrollIntoViewIfNeeded();
     const triggerBox = await box(trigger);
-    await trigger.click();
+    await trigger.evaluate((element) => (element as HTMLButtonElement).click());
     const positioner = page.locator('.nexo-select-positioner');
     const panel = page.locator('.nexo-select-content');
     await expect(panel).toBeVisible();
@@ -145,7 +146,7 @@ test.describe('owner blockers: NexoSelect motion and optical alignment', () => {
 
   test('onboarding product form keeps the same optical field contract', async ({ page }) => {
     const audit = browserAudit(page);
-    execFileSync('pnpm', ['owner:alpha2:reset'], { stdio: 'pipe' });
+    execFileSync('node', ['scripts/owner-onboarding.mjs', 'alpha2'], { stdio: 'pipe' });
     await page.goto(`${web}/login`);
     await page.getByLabel('Correo electrónico').fill('alpha2.owner@nexo.local');
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();

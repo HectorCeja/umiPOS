@@ -1,13 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { completeOnboarding, login, web } from './owner-corrective.helpers';
+import {
+  chooseCustomNexoSelect,
+  chooseNexoSelect,
+  completeOnboarding,
+  login,
+  web,
+} from './owner-corrective.helpers';
 
 test('Cash offers intelligent presets and preserves custom entry', async ({ page }) => {
   await login(page);
   await completeOnboarding(page);
   await page.goto(`${web}/cash`);
   await page.getByText('Configurar puntos de cobro').click();
-  const name = page.getByLabel('Nombre');
-  await expect(name).toHaveValue(/Caja|Mostrador|Punto/i);
+  const name = page.getByRole('combobox', { name: 'Nombre' });
+  await expect(name).toHaveAttribute('data-value', /Caja|Mostrador|Punto/i);
   for (const preset of [
     'Caja principal',
     'Caja secundaria',
@@ -17,7 +23,7 @@ test('Cash offers intelligent presets and preserves custom entry', async ({ page
     'Caja terraza',
     'Punto principal',
   ])
-    await expect(page.locator(`#cash-name-presets option[value="${preset}"]`)).toHaveCount(1);
-  await name.fill('Caja personalizada Owner');
-  await expect(name).toHaveValue('Caja personalizada Owner');
+    await chooseNexoSelect(page, 'Nombre', preset);
+  await chooseCustomNexoSelect(page, 'Nombre', 'Caja personalizada Owner');
+  await expect(name).toHaveAttribute('data-value', 'Caja personalizada Owner');
 });

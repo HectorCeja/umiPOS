@@ -1,8 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
+import { login, web } from './owner-corrective.helpers';
 
-const web = 'http://localhost:3000';
 const artifacts = 'artifacts/ui-part-2';
 
 test.beforeAll(async () => {
@@ -10,16 +10,7 @@ test.beforeAll(async () => {
 });
 
 async function signIn(page: Page) {
-  await page.goto(`${web}/login?scene=static`);
-  if (
-    await page
-      .getByRole('button', { name: 'Entrar a NEXO' })
-      .isVisible()
-      .catch(() => false)
-  ) {
-    await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-    await expect(page.getByRole('heading', { name: /Héctor/ })).toBeVisible();
-  }
+  await login(page);
 }
 
 async function certify(page: Page, route: string, heading: RegExp, name: string) {

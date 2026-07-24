@@ -7,6 +7,7 @@ storybook-static
 playwright-report
 test-results
 artifacts
+docs/PHASE_0C_DEPENDENCY_BUILD_BASELINE.md
 packages/database/src/generated
 **/.dart_tool
 **/build

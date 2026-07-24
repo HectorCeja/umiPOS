@@ -1,4 +1,5 @@
 import { expect, request as createRequest, test, type APIRequestContext } from '@playwright/test';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const apiBase = process.env.PROFILE_MEDIA_API_URL ?? 'http://127.0.0.1:3001';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
@@ -7,13 +8,15 @@ const png = Buffer.from(
   'base64',
 );
 
+let fixtureEmail: string;
+
 async function login(): Promise<{ context: APIRequestContext; csrf: string }> {
   const context = await createRequest.newContext({ baseURL: apiBase });
   const response = await context.post('/v1/auth/login', {
     data: {
       deviceFingerprint: 'profile-media-real-e2e',
       deviceName: 'Profile media real E2E',
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmail,
       password,
       rememberDevice: false,
       rememberMe: false,
@@ -52,6 +55,9 @@ function avatarPath(avatarUrl: string) {
 }
 
 test.describe.serial('profile media persistence with PostgreSQL and MinIO', () => {
+  test.beforeAll(() => {
+    fixtureEmail = createCleanUser().email;
+  });
   test('persists, replaces, survives a new session, and deletes an avatar', async () => {
     const firstSession = await login();
     const first = await upload(firstSession.context, firstSession.csrf, 'avatar-first.png');

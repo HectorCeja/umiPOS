@@ -1,0 +1,36 @@
+{
+  "user": {
+    "displayName": "Alpha Owner",
+    "locale": "es-MX",
+    "timeZone": "America/Mazatlan",
+    "avatarUrl": null,
+    "status": "ACTIVE"
+  },
+  "organization": {
+    "name": "Organization Alpha",
+    "countryCode": "MX",
+    "defaultCurrency": "MXN",
+    "defaultLocale": "es-MX",
+    "timeZone": "America/Mexico_City",
+    "status": "ACTIVE"
+  },
+  "branch": {
+    "name": "Main Branch",
+    "code": "MAIN",
+    "status": "ACTIVE"
+  },
+  "onboarding": {
+    "status": "COMPLETED",
+    "currentStep": 5,
+    "businessType": "RETAIL_STORE",
+    "templateKey": "retail-store",
+    "answers": {
+      "seededPersona": true
+    }
+  },
+  "membership": {
+    "role": "OWNER",
+    "accessScope": "ALL_BRANCHES",
+    "status": "ACTIVE"
+  }
+}

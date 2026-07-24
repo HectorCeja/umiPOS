@@ -1,6 +1,11 @@
-import { expect, type Page, type Response } from '@playwright/test';
+import { expect, type Page, type Request, type Response } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  completeCleanOnboarding,
+  createCleanBusiness,
+  loginClean,
+} from './dynamic-context.helpers';
 
 export const web = 'http://localhost:3000';
 export const api = 'http://localhost:3001';
@@ -8,8 +13,11 @@ export const correctiveArtifacts = path.resolve(
   'artifacts/ui-api-persistence-certification/corrective-pass-2',
 );
 
-export async function evidence(page: Page, name: string) {
-  const directory = path.join(correctiveArtifacts, 'screenshots');
+export async function evidence(
+  page: Page,
+  name: string,
+  directory = path.join(correctiveArtifacts, 'screenshots'),
+) {
   await mkdir(directory, { recursive: true });
   await page.waitForTimeout(350);
   await page.screenshot({
@@ -21,29 +29,115 @@ export async function evidence(page: Page, name: string) {
 
 export function browserAudit(page: Page) {
   const consoleMessages: string[] = [];
-  const failedRequests: string[] = [];
+  const failedRequests: Array<FailedRequestClassification & { message: string }> = [];
   const httpFailures: string[] = [];
+  const successfulReadUrls = new Set<string>();
+  const requestStartedAt = new WeakMap<Request, number>();
+  const requestFrameUrlAtStart = new WeakMap<Request, string>();
+  const requestNavigationGeneration = new WeakMap<Request, number>();
+  let lastDocumentNavigationStartedAt = 0;
+  let navigationGeneration = 0;
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigationGeneration += 1;
+  });
+  page.on('request', (request) => {
+    const startedAt = Date.now();
+    requestStartedAt.set(request, startedAt);
+    requestFrameUrlAtStart.set(request, request.frame().url());
+    requestNavigationGeneration.set(request, navigationGeneration);
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame())
+      lastDocumentNavigationStartedAt = startedAt;
+  });
   page.on('console', (message) => {
     if (['error', 'warning'].includes(message.type()))
       consoleMessages.push(`${message.type()}: ${message.text()}`);
   });
   page.on('pageerror', (error) => consoleMessages.push(`pageerror: ${error.message}`));
-  page.on('requestfailed', (request) =>
-    failedRequests.push(
-      `${request.method()} ${request.url()} ${request.failure()?.errorText ?? ''}`,
-    ),
-  );
+  page.on('requestfailed', (request) => {
+    const failure = {
+      method: request.method(),
+      url: request.url(),
+      errorText: request.failure()?.errorText ?? '',
+      requestStartedAt: requestStartedAt.get(request) ?? Number.POSITIVE_INFINITY,
+      navigationStartedAt: lastDocumentNavigationStartedAt,
+      frameUrlAtStart: requestFrameUrlAtStart.get(request),
+      currentFrameUrl: page.mainFrame().url(),
+      requestNavigationGeneration: requestNavigationGeneration.get(request),
+      currentNavigationGeneration: navigationGeneration,
+    };
+    if (!isExpectedNavigationCancellation(failure))
+      failedRequests.push({
+        ...failure,
+        message: `${failure.method} ${failure.url} ${failure.errorText}`,
+      });
+  });
   page.on('response', (response: Response) => {
+    if (response.status() < 400 && ['GET', 'HEAD'].includes(response.request().method()))
+      successfulReadUrls.add(response.url());
     if (response.status() >= 400)
       httpFailures.push(`${response.request().method()} ${response.url()} ${response.status()}`);
   });
-  return { consoleMessages, failedRequests, httpFailures };
+  return {
+    consoleMessages,
+    get failedRequests() {
+      return failedRequests
+        .filter(
+          (failure) =>
+            !isExpectedNavigationCancellation({
+              ...failure,
+              currentFrameUrl: page.mainFrame().url(),
+              currentNavigationGeneration: navigationGeneration,
+              replacementSucceeded: successfulReadUrls.has(failure.url),
+            }),
+        )
+        .map(({ message }) => message);
+    },
+    httpFailures,
+  };
+}
+
+export type FailedRequestClassification = {
+  method: string;
+  url: string;
+  errorText: string;
+  requestStartedAt: number;
+  navigationStartedAt: number;
+  frameUrlAtStart?: string;
+  currentFrameUrl?: string;
+  requestNavigationGeneration?: number;
+  currentNavigationGeneration?: number;
+  replacementSucceeded?: boolean;
+};
+
+export function isExpectedNavigationCancellation(failure: FailedRequestClassification) {
+  const safeRead = failure.method === 'GET' || failure.method === 'HEAD';
+  const expectedChromiumCancellation =
+    failure.errorText.includes('net::ERR_ABORTED') ||
+    failure.errorText.includes('frame was detached') ||
+    failure.errorText.includes('Target page, context or browser has been closed');
+  const navigationSupersededRequest =
+    (Number.isFinite(failure.requestStartedAt) &&
+      failure.navigationStartedAt >= failure.requestStartedAt) ||
+    (Boolean(failure.frameUrlAtStart) &&
+      Boolean(failure.currentFrameUrl) &&
+      failure.frameUrlAtStart !== failure.currentFrameUrl) ||
+    (failure.requestNavigationGeneration !== undefined &&
+      failure.currentNavigationGeneration !== undefined &&
+      failure.currentNavigationGeneration > failure.requestNavigationGeneration);
+  const securityCriticalRead = /\/(?:auth|sessions?|password|mfa)(?:\/|\?|$)/i.test(failure.url);
+  return (
+    safeRead &&
+    expectedChromiumCancellation &&
+    (navigationSupersededRequest || failure.replacementSucceeded === true) &&
+    !securityCriticalRead
+  );
 }
 
 export async function login(page: Page) {
-  await page.goto(web);
-  const login = page.getByRole('button', { name: 'Entrar a NEXO' });
-  if (await login.isVisible().catch(() => false)) await login.click();
+  await loginClean(page, 'alpha.owner@nexo.local', {
+    organizationId: '10000000-0000-4000-8000-000000000001',
+    branchId: '20000000-0000-4000-8000-000000000001',
+  });
   await page
     .locator('.product-main, .guided-onboarding, .module-page, .settings-surface')
     .first()
@@ -53,6 +147,11 @@ export async function login(page: Page) {
 
 export async function setOnboardingStep(page: Page, step: number) {
   const organizationId = await activeOrganizationId(page);
+  if (organizationId === '10000000-0000-4000-8000-000000000001') {
+    throw new Error(
+      `setOnboardingStep rejected canonical onboarding mutation: helper=setOnboardingStep caller=${testCaller()} organizationId=${organizationId} attemptedStep=${step}`,
+    );
+  }
   const organizationsResponse = await page.request.get(`${api}/v1/organizations`);
   expect(organizationsResponse.ok()).toBe(true);
   const organizationName = (
@@ -105,8 +204,29 @@ export async function setOnboardingStep(page: Page, step: number) {
 }
 
 export async function completeOnboarding(page: Page) {
-  await setOnboardingStep(page, 10);
   const organizationId = await activeOrganizationId(page);
+  if (organizationId === '10000000-0000-4000-8000-000000000001') {
+    const currentResponse = await page.request.get(
+      `${api}/v1/organizations/${organizationId}/onboarding`,
+    );
+    expect(currentResponse.ok()).toBe(true);
+    const current = (await currentResponse.json()) as {
+      status: string;
+      businessType?: string;
+      templateKey?: string;
+      answers?: { seededPersona?: boolean };
+    };
+    expect(current).toMatchObject({
+      status: 'COMPLETED',
+      businessType: 'RETAIL_STORE',
+      templateKey: 'retail-store',
+      answers: { seededPersona: true },
+    });
+    await page.goto(web);
+    await expect(page.locator('.product-main')).toBeVisible({ timeout: 20_000 });
+    return;
+  }
+  await setOnboardingStep(page, 10);
   const csrf =
     (await page.context().cookies()).find(({ name }) => name === 'nexo_csrf')?.value ?? '';
   const current = (await (
@@ -119,6 +239,21 @@ export async function completeOnboarding(page: Page) {
   expect(completed.ok()).toBe(true);
   await page.goto(web);
   await expect(page.locator('.product-main')).toBeVisible({ timeout: 20_000 });
+}
+
+export async function loginIsolatedOnboarding(page: Page) {
+  const fixture = createCleanBusiness();
+  await loginClean(page, fixture.email);
+  return fixture;
+}
+
+function testCaller() {
+  return (
+    new Error().stack
+      ?.split('\n')
+      .find((line) => line.includes('.spec.ts'))
+      ?.trim() ?? 'unknown'
+  );
 }
 
 export async function activeOrganizationId(page: Page) {
@@ -166,9 +301,11 @@ export async function ensureInventoryLocation(page: Page) {
 }
 
 export async function createProductForOwnerTest(page: Page, prefix = 'Producto QA') {
-  await login(page);
-  await completeOnboarding(page);
+  const fixture = createCleanBusiness();
+  await loginClean(page, fixture.email);
+  await completeCleanOnboarding(page, fixture.organizationId);
   await page.goto(`${web}/products`);
+  await expect(page.getByRole('heading', { name: 'Productos', level: 1 })).toBeVisible();
   const suffix = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
   const name = `${prefix} ${suffix}`;
   await page.getByLabel('Nombre del producto').fill(name);
@@ -305,9 +442,23 @@ export async function chooseNexoSelect(
   await trigger.click();
   const listbox = page.getByRole('listbox').last();
   await expect(listbox).toBeVisible();
-  const options = listbox.getByRole('option');
+  const options = listbox.locator('[role=option]:not([aria-disabled=true])');
   if (typeof option === 'number') await options.nth(option).click();
   else await listbox.getByRole('option', { name: option }).click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  return trigger;
+}
+
+export async function chooseCustomNexoSelect(page: Page, label: string | RegExp, value: string) {
+  const trigger = page.getByRole('combobox', { name: label });
+  await trigger.click();
+  const search = page.getByRole('searchbox', {
+    name: typeof label === 'string' ? `Buscar en ${label}` : label,
+  });
+  await expect(search).toBeVisible();
+  await search.fill(value);
+  await search.press('Enter');
+  await expect(trigger).toHaveAttribute('data-value', value);
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   return trigger;
 }

@@ -5,7 +5,7 @@ import {
   browserAudit,
   completeOnboarding,
   expectClean,
-  login,
+  loginIsolatedOnboarding,
   setOnboardingStep,
   web,
 } from './owner-corrective.helpers';
@@ -20,7 +20,7 @@ test('captures the premium owner walkthrough with clean browser telemetry', asyn
   await page.goto(`${web}/login?scene=static`);
   await page.screenshot({ path: path.join(after, 'login.png'), fullPage: true });
 
-  await login(page);
+  await loginIsolatedOnboarding(page);
   await completeOnboarding(page);
   for (const [name, route] of [
     ['dashboard', '/'],

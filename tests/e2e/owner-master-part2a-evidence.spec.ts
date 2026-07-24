@@ -1,4 +1,5 @@
 import { chromium, expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -7,16 +8,25 @@ import {
   expectClean,
   web,
 } from './owner-corrective.helpers';
+import {
+  completeCleanOnboarding,
+  createCleanBusiness,
+  loginClean,
+} from './dynamic-context.helpers';
 
 const root = path.resolve('artifacts/owner-final-acceptance-master-part-2a');
+const evidenceMode = process.env.NEXO_E2E_ARTIFACT_MODE === 'evidence';
 test('walkthrough Chromium real de bloqueadores Part 2A', async () => {
   test.setTimeout(120_000);
+  execFileSync('pnpm', ['owner:alpha2:reset'], { stdio: 'pipe' });
   await mkdir(path.join(root, 'screenshots'), { recursive: true });
   await mkdir(path.join(root, 'videos'), { recursive: true });
   const browser = await chromium.launch();
   let context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    recordVideo: { dir: path.join(root, 'videos'), size: { width: 1440, height: 900 } },
+    ...(evidenceMode
+      ? { recordVideo: { dir: path.join(root, 'videos'), size: { width: 1440, height: 900 } } }
+      : {}),
   });
   let page = await context.newPage();
   const audit = browserAudit(page);
@@ -37,14 +47,15 @@ test('walkthrough Chromium real de bloqueadores Part 2A', async () => {
   await context.close();
   context = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    recordVideo: { dir: path.join(root, 'videos'), size: { width: 1440, height: 900 } },
+    ...(evidenceMode
+      ? { recordVideo: { dir: path.join(root, 'videos'), size: { width: 1440, height: 900 } } }
+      : {}),
   });
   page = await context.newPage();
   const authenticatedAudit = browserAudit(page);
-  await page.goto(`${web}/login`);
-  await page.getByLabel('Correo electrónico').fill('alpha.owner@nexo.local');
-  await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-  await page.locator('.product-main').waitFor();
+  const fixture = createCleanBusiness();
+  await loginClean(page, fixture.email);
+  await completeCleanOnboarding(page, fixture.organizationId);
   await page.goto(`${web}/control-plane/inventory-locations`);
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'Ubicaciones' })).toBeVisible();
@@ -52,8 +63,19 @@ test('walkthrough Chromium real de bloqueadores Part 2A', async () => {
   const evidenceCode = `EVID-${Date.now()}`;
   await page.getByRole('textbox', { name: 'Nombre *' }).fill('Ubicación evidencia');
   await page.getByRole('textbox', { name: 'Código *' }).fill(evidenceCode);
+  const createdLocation = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/inventory/locations'),
+  );
+  const createdLocationFinished = page.waitForEvent(
+    'requestfinished',
+    (request) => request.method() === 'POST' && request.url().includes('/inventory/locations'),
+  );
   await page.getByRole('button', { name: 'Crear ubicación' }).click();
+  expect((await createdLocation).status()).toBe(201);
+  await createdLocationFinished;
   await expect(page.getByText('Ubicación creada y disponible en Inventario.')).toBeVisible();
+  await expect(page.getByText(evidenceCode, { exact: false })).toBeVisible();
   await page.screenshot({ path: path.join(root, 'screenshots/03a-feedback-local-exito.png') });
   await page.getByRole('textbox', { name: 'Nombre *' }).fill('Ubicación duplicada');
   await page.getByRole('textbox', { name: 'Código *' }).fill(evidenceCode);
@@ -89,7 +111,7 @@ test('walkthrough Chromium real de bloqueadores Part 2A', async () => {
     fullPage: false,
   });
   expectClean(authenticatedAudit);
-  const video = page.video();
+  const video = evidenceMode ? page.video() : null;
   await context.close();
   if (video) await video.saveAs(path.join(root, 'videos/owner-master-part2a.webm'));
   await browser.close();

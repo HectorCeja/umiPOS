@@ -1,0 +1,752 @@
+
+> nexo@0.0.0 manual-acceptance:prepare /home/hceja/Documents/nexo
+> pnpm manual-acceptance:setup
+
+
+> nexo@0.0.0 manual-acceptance:setup /home/hceja/Documents/nexo
+> bash scripts/manual-acceptance-env.sh setup
+
+
+▶ Preflight
+! Disco al 86%. Los builds fríos pueden degradarse. Diagnóstico: docker system df
+✓ Docker, Compose, Node, pnpm, lockfile y espacio disponibles.
+
+▶ Validando contratos, SDK, dependencias y Flutter
+(node:1539996) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @nexo/contracts@0.0.0 validate /home/hceja/Documents/nexo/packages/contracts
+> node scripts/validate-openapi.mjs
+
+OpenAPI valid: 144 operations
+
+> @nexo/sdk@0.0.0 generate:check /home/hceja/Documents/nexo/packages/sdk
+> node scripts/generate-openapi-operations.mjs --check
+
+! Flutter no está en PATH. Web manual puede iniciar; para QA Flutter configura Flutter 3.44.6.
+✓ OpenAPI, SDK, dependencias, permisos y puertos validados.
+
+▶ Instalando dependencias del workspace (solo setup)
+Scope: all 19 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+(node:1540486) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+. prepare$ husky
+. prepare: Done
+Done in 1.2s using pnpm v10.13.1
+
+▶ Descargando imágenes base
+ Image minio/mc:RELEASE.2025-04-16T18-13-26Z Pulling 
+ Image redis:8.2.1-alpine Pulling 
+ Image postgres:18.0-alpine Pulling 
+ Image minio/minio:RELEASE.2025-04-22T22-12-26Z Pulling 
+ Image otel/opentelemetry-collector-contrib:0.132.0 Pulling 
+ Image axllent/mailpit:v1.27.8 Pulling 
+ Image minio/mc:RELEASE.2025-04-16T18-13-26Z Pulled 
+ Image otel/opentelemetry-collector-contrib:0.132.0 Pulled 
+ Image minio/minio:RELEASE.2025-04-22T22-12-26Z Pulled 
+ Image axllent/mailpit:v1.27.8 Pulled 
+ Image postgres:18.0-alpine Pulled 
+ Image redis:8.2.1-alpine Pulled 
+
+▶ Construyendo migrate, API, Worker y Web
+ Image nexo-worker Building 
+ Image nexo-api Building 
+ Image nexo-web Building 
+ Image nexo-migrate Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.79kB done
+#1 DONE 0.0s
+
+#2 [api internal] load build definition from api.Dockerfile
+#2 transferring dockerfile: 549B done
+#2 DONE 0.0s
+
+#3 [web internal] load build definition from web.Dockerfile
+#3 transferring dockerfile: 713B done
+#3 DONE 0.0s
+
+#4 [migrate internal] load build definition from migrate.Dockerfile
+#4 transferring dockerfile: 449B done
+#4 DONE 0.1s
+
+#5 [worker internal] load build definition from worker.Dockerfile
+#5 transferring dockerfile: 546B done
+#5 DONE 0.1s
+
+#6 [worker internal] load .dockerignore
+#6 transferring context: 273B done
+#6 DONE 0.0s
+
+#7 [worker internal] load metadata for docker.io/library/node:24.18.0-alpine
+#7 DONE 0.1s
+
+#8 [api 1/9] FROM docker.io/library/node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
+#8 resolve docker.io/library/node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd done
+#8 DONE 0.0s
+
+#9 [api internal] load build context
+#9 transferring context: 18.20MB 0.1s done
+#9 DONE 0.1s
+
+#10 [web 4/9] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+#10 CACHED
+
+#11 [web 2/9] WORKDIR /workspace
+#11 CACHED
+
+#12 [web 3/9] RUN corepack enable
+#12 CACHED
+
+#13 [worker 5/9] RUN pnpm fetch --frozen-lockfile
+#13 CACHED
+
+#14 [web 6/9] COPY . .
+#14 DONE 0.7s
+
+#15 [api 7/9] RUN pnpm install --frozen-lockfile --offline
+#15 1.218 Scope: all 19 workspace projects
+#15 1.302 Lockfile is up to date, resolution step is skipped
+#15 1.392 Already up to date
+#15 2.947 (node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#15 2.947 (Use `node --trace-deprecation ...` to show where the warning was created)
+#15 3.659 
+#15 3.659 devDependencies:
+#15 3.659 + @axe-core/playwright 4.10.2
+#15 3.659 + @eslint/js 9.32.0
+#15 3.659 + @playwright/test 1.61.1
+#15 3.659 + @types/node 24.1.0
+#15 3.659 + eslint 9.32.0
+#15 3.659 + eslint-config-prettier 10.1.8
+#15 3.659 + globals 16.3.0
+#15 3.659 + husky 9.1.7
+#15 3.659 + lint-staged 16.1.2
+#15 3.659 + prettier 3.6.2
+#15 3.659 + turbo 2.5.5
+#15 3.659 + typescript 5.8.3
+#15 3.659 + typescript-eslint 8.38.0
+#15 3.659 + vitest 3.2.4
+#15 3.659 
+#15 3.659 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+#15 3.659 │                                                                              │
+#15 3.659 │   Ignored build scripts: @scarf/scarf, protobufjs, sharp.                    │
+#15 3.659 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+#15 3.659 │   to run scripts.                                                            │
+#15 3.659 │                                                                              │
+#15 3.659 ╰──────────────────────────────────────────────────────────────────────────────╯
+#15 3.659 
+#15 3.666 . prepare$ husky
+#15 3.705 . prepare: .git can't be found
+#15 3.706 . prepare: Done
+#15 3.741 Done in 3s using pnpm v10.13.1
+#15 DONE 4.0s
+
+#16 [api build 8/9] RUN pnpm --filter @nexo/api... build
+#16 0.920 Scope: 13 of 19 workspace projects
+#16 0.928 packages/authorization build$ tsc -p tsconfig.build.json
+#16 0.929 packages/cash build$ tsc -p tsconfig.build.json
+#16 0.929 packages/identity build$ tsc -p tsconfig.build.json
+#16 0.930 packages/control-plane build$ tsc -p tsconfig.build.json
+#16 2.901 packages/control-plane build: Done
+#16 2.954 packages/contracts build$ pnpm validate
+#16 3.067 packages/cash build: Done
+#16 3.083 packages/inventory build$ tsc -p tsconfig.build.json
+#16 3.236 packages/authorization build: Done
+#16 3.248 packages/observability build$ tsc -p tsconfig.build.json
+#16 3.333 packages/identity build: Done
+#16 3.350 packages/product build$ tsc -p tsconfig.build.json
+#16 3.593 packages/contracts build: > @nexo/contracts@0.0.0 validate /workspace/packages/contracts
+#16 3.593 packages/contracts build: > node scripts/validate-openapi.mjs
+#16 3.758 packages/contracts build: OpenAPI valid: 144 operations
+#16 3.784 packages/contracts build: Done
+#16 3.791 packages/sales build$ tsc -p tsconfig.build.json
+#16 4.694 packages/inventory build: Done
+  Construyendo imágenes; transcurrido 10s. Siguiente: verificar resultado.
+#16 4.940 packages/product build: Done
+#16 5.233 packages/observability build: Done
+#16 5.397 packages/sales build: Done
+#16 5.405 packages/config build$ tsc -p tsconfig.build.json
+#16 5.406 packages/database build$ tsc -p tsconfig.build.json
+#16 6.569 packages/config build: Done
+#16 ...
+
+#17 [migrate 8/9] RUN pnpm --filter @nexo/database... build
+#17 0.915 Scope: 4 of 19 workspace projects
+#17 0.918 packages/authorization build$ tsc -p tsconfig.build.json
+#17 0.918 packages/control-plane build$ tsc -p tsconfig.build.json
+#17 2.679 packages/control-plane build: Done
+#17 3.021 packages/authorization build: Done
+#17 3.029 packages/database build$ tsc -p tsconfig.build.json
+#17 7.502 packages/database build: Done
+#17 DONE 7.7s
+
+#18 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#18 0.916 Scope: 4 of 19 workspace projects
+#18 0.920 packages/sdk build$ pnpm generate:check && tsc -p tsconfig.build.json
+#18 0.920 packages/ui build$ tsc -p tsconfig.build.json
+#18 1.472 packages/sdk build: > @nexo/sdk@0.0.0 generate:check /workspace/packages/sdk
+#18 1.472 packages/sdk build: > node scripts/generate-openapi-operations.mjs --check
+#18 3.931 packages/sdk build: Done
+#18 6.128 packages/ui build: Done
+#18 6.135 apps/web build$ next build
+#18 6.790 apps/web build: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#18 6.790 apps/web build: This information is used to shape Next.js' roadmap and prioritize features.
+#18 6.790 apps/web build: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#18 6.790 apps/web build: https://nextjs.org/telemetry
+#18 6.805 apps/web build: ▲ Next.js 16.2.10 (Turbopack)
+#18 6.842 apps/web build:   Creating an optimized production build ...
+#18 ...
+
+#19 [migrate 9/9] RUN pnpm db:generate
+#19 0.892 
+#19 0.892 > nexo@0.0.0 db:generate /workspace
+#19 0.892 > pnpm --filter @nexo/database generate
+#19 0.892 
+#19 1.392 
+#19 1.392 > @nexo/database@0.0.0 generate /workspace/packages/database
+#19 1.392 > prisma generate
+#19 1.392 
+#19 ...
+
+#20 [worker build 8/9] RUN pnpm --filter @nexo/worker... build
+#20 1.085 Scope: 8 of 19 workspace projects
+#20 1.089 packages/identity build$ tsc -p tsconfig.build.json
+#20 1.089 packages/authorization build$ tsc -p tsconfig.build.json
+#20 1.090 packages/control-plane build$ tsc -p tsconfig.build.json
+#20 1.090 packages/observability build$ tsc -p tsconfig.build.json
+#20 2.967 packages/control-plane build: Done
+#20 3.764 packages/identity build: Done
+#20 3.799 packages/observability build: Done
+#20 3.822 packages/authorization build: Done
+#20 3.830 packages/config build$ tsc -p tsconfig.build.json
+#20 3.830 packages/database build$ tsc -p tsconfig.build.json
+#20 5.247 packages/config build: Done
+#20 8.068 packages/database build: Done
+#20 8.077 apps/worker build$ tsc -p tsconfig.build.json
+#20 ...
+
+#16 [api build 8/9] RUN pnpm --filter @nexo/api... build
+#16 9.263 packages/database build: Done
+#16 9.267 apps/api build$ nest build
+#16 ...
+
+#20 [worker build 8/9] RUN pnpm --filter @nexo/worker... build
+#20 10.31 apps/worker build: Done
+#20 DONE 10.5s
+
+#18 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#18 10.46 apps/web build: ✓ Compiled successfully in 3.4s
+#18 10.47 apps/web build:   Running TypeScript ...
+#18 ...
+
+#19 [migrate 9/9] RUN pnpm db:generate
+#19 2.870 Loaded Prisma config from prisma.config.ts.
+#19 2.870 
+#19 3.248 Prisma schema loaded from prisma/schema.prisma.
+#19 4.139 
+#19 4.139 ✔ Generated Prisma Client (7.8.0) to ./src/generated/client in 560ms
+#19 4.139 
+#19 DONE 4.9s
+
+#21 [migrate] exporting to image
+#21 exporting layers
+  Construyendo imágenes; transcurrido 20s. Siguiente: verificar resultado.
+#21 exporting layers 3.1s done
+#21 exporting manifest sha256:9fb07f71347df266f94bd43fc9e5b745879410780df7ff9aa706b72b94509224
+#21 exporting manifest sha256:9fb07f71347df266f94bd43fc9e5b745879410780df7ff9aa706b72b94509224 0.2s done
+#21 exporting config sha256:7dee6e9c2830f344ff3fd6334c0755a750558b54890b5848926fc8893416c600
+#21 exporting config sha256:7dee6e9c2830f344ff3fd6334c0755a750558b54890b5848926fc8893416c600 0.1s done
+#21 naming to docker.io/library/nexo-migrate:latest
+#21 naming to docker.io/library/nexo-migrate:latest 0.0s done
+#21 unpacking to docker.io/library/nexo-migrate:latest
+#21 unpacking to docker.io/library/nexo-migrate:latest 3.4s done
+#21 DONE 6.8s
+
+#18 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#18 14.90 apps/web build:   Finished TypeScript in 4.4s ...
+#18 14.90 apps/web build:   Collecting page data using 11 workers ...
+#18 15.74 apps/web build:   Generating static pages using 11 workers (0/25) ...
+#18 16.03 apps/web build:   Generating static pages using 11 workers (6/25) 
+#18 16.20 apps/web build:   Generating static pages using 11 workers (12/25) 
+#18 16.29 apps/web build:   Generating static pages using 11 workers (18/25) 
+#18 16.32 apps/web build: ✓ Generating static pages using 11 workers (25/25) in 584ms
+#18 16.39 apps/web build:   Finalizing page optimization ...
+#18 ...
+
+#16 [api build 8/9] RUN pnpm --filter @nexo/api... build
+#16 17.02 apps/api build: Done
+#16 DONE 20.5s
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 0.992 Packages are copied from the content-addressable store to the virtual store.
+#22 0.992   Content-addressable store is at: /root/.local/share/pnpm/store/v10
+#22 0.992   Virtual store is at:             ../out/node_modules/.pnpm
+#22 1.016 ../out                                   | Progress: resolved 1, reused 0, downloaded 0, added 0
+#22 1.113 ../out                                   | +291 +++++++++++++++++++++++++++++
+#22 2.018 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 0
+#22 3.018 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 27
+#22 4.019 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 35
+#22 5.019 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 36
+#22 6.020 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 38
+#22 7.022 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 40
+#22 8.023 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 41
+#22 9.024 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 42
+#22 10.02 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 44
+#22 ...
+
+#18 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#18 20.58 apps/web build: Route (app)
+#18 20.58 apps/web build: ┌ ƒ /
+#18 20.58 apps/web build: ├ ƒ /_not-found
+#18 20.58 apps/web build: ├ ƒ /cash
+#18 20.58 apps/web build: ├ ƒ /control-plane/branches
+#18 20.58 apps/web build: ├ ƒ /control-plane/inventory-locations
+#18 20.58 apps/web build: ├ ƒ /control-plane/invitations
+#18 20.58 apps/web build: ├ ƒ /control-plane/onboarding
+#18 20.58 apps/web build: ├ ƒ /control-plane/organizations
+#18 20.58 apps/web build: ├ ƒ /control-plane/settings
+#18 20.58 apps/web build: ├ ƒ /help
+#18 20.58 apps/web build: ├ ○ /icon.svg
+#18 20.58 apps/web build: ├ ƒ /inventory
+#18 20.58 apps/web build: ├ ƒ /invitations/accept
+#18 20.58 apps/web build: ├ ƒ /login
+#18 20.58 apps/web build: ├ ƒ /products
+#18 20.58 apps/web build: ├ ƒ /reports
+#18 20.58 apps/web build: ├ ƒ /sales
+#18 20.58 apps/web build: ├ ƒ /sales/[saleId]
+#18 20.58 apps/web build: ├ ƒ /sales/[saleId]/receipt
+#18 20.58 apps/web build: ├ ƒ /sales/[saleId]/timeline
+#18 20.58 apps/web build: ├ ƒ /sales/exceptions
+#18 20.58 apps/web build: ├ ƒ /sales/history
+#18 20.58 apps/web build: ├ ƒ /sales/open
+#18 20.58 apps/web build: ├ ƒ /sales/receipts
+#18 20.58 apps/web build: ├ ƒ /sales/refunds
+#18 20.58 apps/web build: ├ ƒ /sales/suspended
+#18 20.58 apps/web build: └ ƒ /settings/profile
+#18 20.58 apps/web build: ƒ Proxy (Middleware)
+#18 20.58 apps/web build: ○  (Static)   prerendered as static content
+#18 20.58 apps/web build: ƒ  (Dynamic)  server-rendered on demand
+#18 20.66 apps/web build: Done
+#18 ...
+
+#23 [migrate] resolving provenance for metadata file
+#23 DONE 0.0s
+
+#18 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#18 DONE 21.4s
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 ...
+
+#25 [web runtime 2/6] WORKDIR /app
+#25 CACHED
+
+#26 [web runtime 3/6] RUN addgroup -S nexo && adduser -S -G nexo nexo
+#26 CACHED
+
+#27 [web runtime 4/6] COPY --from=build /workspace/apps/web/.next/standalone ./
+#27 DONE 2.3s
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 11.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 48
+#22 12.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 51
+#22 13.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 54
+#22 14.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 55
+  Construyendo imágenes; transcurrido 30s. Siguiente: verificar resultado.
+#22 ...
+
+#28 [web runtime 5/6] COPY --from=build /workspace/apps/web/.next/static ./apps/web/.next/static
+#28 DONE 1.0s
+
+#29 [web runtime 6/6] COPY --from=build /workspace/apps/web/public ./apps/web/public
+#29 DONE 0.6s
+
+#30 [web] exporting to image
+#30 exporting layers
+#30 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 3.573 Packages are copied from the content-addressable store to the virtual store.
+#24 3.573   Content-addressable store is at: /root/.local/share/pnpm/store/v10
+#24 3.573   Virtual store is at:             ../out/node_modules/.pnpm
+#24 3.609 ../out                                   | Progress: resolved 1, reused 0, downloaded 0, added 0
+#24 3.687 ../out                                   | +458 ++++++++++++++++++++++++++++++++
+#24 4.610 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 4
+#24 5.611 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 17
+#24 6.611 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 23
+#24 7.612 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 27
+#24 8.612 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 28
+#24 12.21 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 29
+#24 13.21 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 31
+#24 ...
+
+#30 [web] exporting to image
+#30 exporting layers 8.2s done
+#30 exporting manifest sha256:dcd56ba9bab77196bf63524a8481cdf8cdc178c87be3a7efe13cbc27caed0206
+#30 exporting manifest sha256:dcd56ba9bab77196bf63524a8481cdf8cdc178c87be3a7efe13cbc27caed0206 0.5s done
+#30 exporting config sha256:3192d5c8bb6a722a4503b078337bcaaff1afa6b427ae9a5eacd8e92c784e3277
+#30 exporting config sha256:3192d5c8bb6a722a4503b078337bcaaff1afa6b427ae9a5eacd8e92c784e3277 0.5s done
+#30 naming to docker.io/library/nexo-web:latest
+  Construyendo imágenes; transcurrido 40s. Siguiente: verificar resultado.
+#30 naming to docker.io/library/nexo-web:latest 0.1s done
+#30 unpacking to docker.io/library/nexo-web:latest
+#30 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 15.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 56
+#22 16.03 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 58
+#22 17.78 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 59
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 14.21 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 34
+#24 15.22 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 37
+#24 16.22 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 38
+#24 ...
+
+#30 [web] exporting to image
+#30 unpacking to docker.io/library/nexo-web:latest 2.8s done
+#30 DONE 12.2s
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 17.25 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 39
+#24 18.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 40
+#24 ...
+
+#31 [web] resolving provenance for metadata file
+#31 DONE 0.0s
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 26.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 60
+#22 27.47 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 61
+#22 28.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 63
+#22 29.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 70
+#22 30.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 83
+#22 31.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 99
+#22 32.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 123
+#22 33.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 140
+  Construyendo imágenes; transcurrido 50s. Siguiente: verificar resultado.
+#22 34.48 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 146
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 19.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 60
+#24 20.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 65
+#24 21.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 83
+#24 22.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 87
+#24 23.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 91
+#24 24.31 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 100
+#24 25.41 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 101
+#24 26.69 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 102
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 36.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 147
+#22 37.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 157
+#22 38.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 167
+#22 40.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 168
+#22 41.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 169
+#22 42.73 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 170
+#22 43.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 171
+  Construyendo imágenes; transcurrido 60s. Siguiente: verificar resultado.
+#22 44.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 172
+#22 45.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 174
+#22 46.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 176
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 27.69 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 111
+#24 28.69 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 118
+#24 30.02 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 119
+#24 31.02 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 120
+#24 33.79 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 121
+#24 36.61 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 122
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 47.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 177
+#22 48.81 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 178
+#22 53.19 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 179
+#22 54.19 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 183
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 44.32 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 123
+  Construyendo imágenes; transcurrido 70s. Siguiente: verificar resultado.
+#24 45.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 125
+#24 46.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 131
+#24 47.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 139
+#24 48.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 149
+#24 49.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 155
+#24 50.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 156
+#24 51.33 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 160
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 55.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 189
+#22 56.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 194
+#22 57.19 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 198
+#22 58.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 214
+#22 59.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 224
+#22 60.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 229
+#22 61.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 235
+#22 62.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 238
+#22 63.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 243
+#22 64.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 247
+  Construyendo imágenes; transcurrido 80s. Siguiente: verificar resultado.
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 54.84 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 161
+#24 55.84 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 163
+#24 56.85 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 164
+  Construyendo imágenes; transcurrido 90s. Siguiente: verificar resultado.
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 65.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 251
+#22 66.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 254
+#22 67.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 257
+#22 80.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 258
+#22 81.20 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 259
+#22 84.32 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 260
+  Construyendo imágenes; transcurrido 100s. Siguiente: verificar resultado.
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 74.45 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 165
+#24 75.45 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 199
+#24 76.45 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 219
+#24 77.45 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 237
+  Construyendo imágenes; transcurrido 110s. Siguiente: verificar resultado.
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 85.32 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 274
+#22 86.32 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 286
+#22 87.32 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 290
+#22 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 87.80 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 238
+#24 88.80 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 246
+#24 89.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 248
+#24 ...
+
+#22 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#22 99.46 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 291
+#22 99.46 ../out                                   | Progress: resolved 291, reused 291, downloaded 0, added 291, done
+#22 99.55 (node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#22 99.55 (Use `node --trace-deprecation ...` to show where the warning was created)
+#22 DONE 100.0s
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 90.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 257
+#24 91.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 282
+#24 92.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 312
+#24 ...
+
+#25 [worker runtime 2/6] WORKDIR /app
+#25 CACHED
+
+#25 [api runtime 2/6] WORKDIR /app
+#25 CACHED
+
+#32 [worker runtime 3/4] RUN addgroup -S nexo && adduser -S -G nexo nexo
+#32 CACHED
+
+#33 [worker runtime 4/4] COPY --from=build /out ./
+  Construyendo imágenes; transcurrido 120s. Siguiente: verificar resultado.
+#33 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 93.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 316
+#24 94.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 325
+#24 95.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 334
+#24 96.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 338
+#24 97.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 339
+#24 98.81 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 340
+  Construyendo imágenes; transcurrido 130s. Siguiente: verificar resultado.
+#24 113.1 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 341
+  Construyendo imágenes; transcurrido 140s. Siguiente: verificar resultado.
+#24 122.1 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 342
+  Construyendo imágenes; transcurrido 150s. Siguiente: verificar resultado.
+#24 125.4 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 343
+  Construyendo imágenes; transcurrido 160s. Siguiente: verificar resultado.
+#24 136.0 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 344
+#24 143.3 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 345
+  Construyendo imágenes; transcurrido 170s. Siguiente: verificar resultado.
+  Construyendo imágenes; transcurrido 180s. Siguiente: verificar resultado.
+#24 154.8 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 346
+#24 156.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 347
+#24 ...
+
+#33 [worker runtime 4/4] COPY --from=build /out ./
+#33 DONE 63.9s
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 ...
+
+#34 [worker] exporting to image
+#34 exporting layers
+#34 ...
+
+#24 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#24 157.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 349
+#24 158.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 351
+#24 159.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 388
+#24 160.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 418
+#24 161.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 456
+#24 162.6 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 457
+#24 162.7 ../out                                   | Progress: resolved 458, reused 458, downloaded 0, added 458, done
+#24 162.8 (node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#24 162.8 (Use `node --trace-deprecation ...` to show where the warning was created)
+#24 DONE 163.4s
+
+#34 [worker] exporting to image
+  Construyendo imágenes; transcurrido 190s. Siguiente: verificar resultado.
+#34 ...
+
+#35 [api runtime 4/4] COPY --from=build /out ./
+#35 DONE 4.3s
+
+#34 [worker] exporting to image
+#34 ...
+
+#36 [api] exporting to image
+#36 exporting layers
+  Construyendo imágenes; transcurrido 200s. Siguiente: verificar resultado.
+#36 ...
+
+#34 [worker] exporting to image
+#34 exporting layers 17.1s done
+#34 exporting manifest sha256:bc2ea3610a3595b4d3d0e2f5065e95e5f87d51c14c5f7480d3df0e4cefaf45e3 done
+#34 exporting config sha256:57bad7e88d0169a4d36ea705c9360f6bf0504752a9cdcf3577a0a6c33298d358 done
+#34 naming to docker.io/library/nexo-worker:latest done
+#34 unpacking to docker.io/library/nexo-worker:latest
+#34 unpacking to docker.io/library/nexo-worker:latest 5.8s done
+#34 DONE 22.9s
+
+#37 [worker] resolving provenance for metadata file
+#37 DONE 0.0s
+
+#36 [api] exporting to image
+  Construyendo imágenes; transcurrido 210s. Siguiente: verificar resultado.
+#36 exporting layers 20.9s done
+#36 exporting manifest sha256:da8e5b7455a53aed4340dcbafff3a1381095e9d285372e1e198967343be457be 0.0s done
+#36 exporting config sha256:b184b5b68eec19465963d7cd7f4312d382aa87e945ed69dc941bcbfcac30d51c 0.0s done
+#36 naming to docker.io/library/nexo-api:latest done
+#36 unpacking to docker.io/library/nexo-api:latest
+  Construyendo imágenes; transcurrido 220s. Siguiente: verificar resultado.
+#36 unpacking to docker.io/library/nexo-api:latest 9.2s done
+#36 DONE 30.2s
+  Construyendo imágenes; transcurrido 230s. Siguiente: verificar resultado.
+
+#38 [api] resolving provenance for metadata file
+#38 DONE 0.1s
+ Image nexo-worker Built 
+ Image nexo-web Built 
+ Image nexo-migrate Built 
+ Image nexo-api Built 
+
+▶ Iniciando infraestructura y aplicando migraciones/seed
+ Container nexo-mailpit-1 Running 
+ Container nexo-postgres-1 Running 
+ Container nexo-otel-collector-1 Running 
+ Container nexo-minio-1 Running 
+ Container nexo-redis-1 Running 
+ Container nexo-minio-1 Running 
+ Container nexo-minio-1 Waiting 
+ Container nexo-minio-1 Healthy 
+ Container nexo-minio-init-run-9383464e9b65 Creating 
+  Preparando bucket privado de MinIO; transcurrido 10s. Siguiente: verificar resultado.
+  Preparando bucket privado de MinIO; transcurrido 20s. Siguiente: verificar resultado.
+ Container nexo-minio-init-run-9383464e9b65 Created 
+Added `local` successfully.
+Bucket created successfully `local/nexo-local`.
+Access permission for `local/nexo-local` is set to `private`
+ Container nexo-postgres-1 Running 
+ Container nexo-postgres-1 Waiting 
+ Container nexo-postgres-1 Healthy 
+ Container nexo-migrate-run-28f4444f3038 Creating 
+ Container nexo-migrate-run-28f4444f3038 Created 
+
+> nexo@0.0.0 db:deploy /workspace
+> pnpm --filter @nexo/database migrate:deploy
+
+
+> @nexo/database@0.0.0 migrate:deploy /workspace/packages/database
+> prisma migrate deploy
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "nexo", schema "public" at "postgres:5432"
+
+39 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+
+> nexo@0.0.0 db:seed /workspace
+> pnpm --filter @nexo/database seed
+
+
+> @nexo/database@0.0.0 seed /workspace/packages/database
+> tsx prisma/seed.ts
+
+  Ejecutando migraciones y seed; transcurrido 10s. Siguiente: verificar resultado.
+
+▶ Iniciando aplicaciones
+ Container nexo-api-1 Recreate 
+ Container nexo-worker-1 Recreate 
+ Container nexo-worker-1 Recreated 
+ Container nexo-api-1 Recreated 
+ Container nexo-web-1 Recreate 
+ Container nexo-web-1 Recreated 
+ Container nexo-worker-1 Starting 
+ Container nexo-api-1 Starting 
+ Container nexo-api-1 Started 
+ Container nexo-api-1 Waiting 
+ Container nexo-worker-1 Started 
+ Container nexo-api-1 Healthy 
+ Container nexo-web-1 Starting 
+ Container nexo-web-1 Started 
+
+▶ Esperando health checks en paralelo
+✓ postgres listo (0 s)
+✓ redis listo (0 s)
+✓ minio listo (0 s)
+✓ mailpit listo (0 s)
+✓ otel-collector listo (0 s)
+✓ api listo (0 s)
+  Esperando: worker=starting web=starting (transcurrido 1s)
+✓ worker listo (5 s)
+✓ web listo (11 s)
+
+▶ Preparando paquete de validación manual
+Generated 156 manual acceptance scenarios
+✓ Paquete listo: /home/hceja/Documents/nexo/artifacts/manual-acceptance/current-run/START_HERE.md
+
+══════════════════════════════════════
+NEXO READY
+
+SERVICE            STATUS     PID      URL
+------------------ ---------- -------- ---
+postgres           READY      455725   localhost:5432
+redis              READY      455855   localhost:6379
+minio              READY      455984   http://localhost:9001
+mailpit            READY      456095   http://localhost:8025
+otel-collector     READY      456224   http://localhost:13133
+api                READY      1551313  http://localhost:3001/health/ready
+worker             READY      1551311  -
+web                READY      1551614  http://localhost:3000
+
+Tiempo total: 357s
+Web: http://localhost:3000
+API: http://localhost:3001
+Mailpit: http://localhost:8025
+Inicio owner: docs/owner-validation/START_HERE.md
+══════════════════════════════════════

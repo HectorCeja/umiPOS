@@ -1,0 +1,290 @@
+
+> nexo@0.0.0 manual-acceptance:prepare /home/hceja/Documents/nexo
+> pnpm manual-acceptance:setup
+
+
+> nexo@0.0.0 manual-acceptance:setup /home/hceja/Documents/nexo
+> bash scripts/manual-acceptance-env.sh setup
+
+
+▶ Preflight
+✓ Docker, Compose, Node, pnpm, lockfile y espacio disponibles.
+
+▶ Validando contratos, SDK, dependencias y Flutter
+(node:1555953) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @nexo/contracts@0.0.0 validate /home/hceja/Documents/nexo/packages/contracts
+> node scripts/validate-openapi.mjs
+
+OpenAPI valid: 144 operations
+
+> @nexo/sdk@0.0.0 generate:check /home/hceja/Documents/nexo/packages/sdk
+> node scripts/generate-openapi-operations.mjs --check
+
+! Flutter no está en PATH. Web manual puede iniciar; para QA Flutter configura Flutter 3.44.6.
+✓ OpenAPI, SDK, dependencias, permisos y puertos validados.
+
+▶ Instalando dependencias del workspace (solo setup)
+Scope: all 19 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+(node:1556468) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+. prepare$ husky
+. prepare: Done
+Done in 1.2s using pnpm v10.13.1
+
+▶ Descargando imágenes base
+ Image minio/minio:RELEASE.2025-04-22T22-12-26Z Pulling 
+ Image redis:8.2.1-alpine Pulling 
+ Image otel/opentelemetry-collector-contrib:0.132.0 Pulling 
+ Image postgres:18.0-alpine Pulling 
+ Image axllent/mailpit:v1.27.8 Pulling 
+ Image minio/mc:RELEASE.2025-04-16T18-13-26Z Pulling 
+ Image minio/mc:RELEASE.2025-04-16T18-13-26Z Pulled 
+ Image otel/opentelemetry-collector-contrib:0.132.0 Pulled 
+ Image minio/minio:RELEASE.2025-04-22T22-12-26Z Pulled 
+ Image axllent/mailpit:v1.27.8 Pulled 
+ Image redis:8.2.1-alpine Pulled 
+ Image postgres:18.0-alpine Pulled 
+
+▶ Construyendo migrate, API, Worker y Web
+ Image nexo-migrate Building 
+ Image nexo-worker Building 
+ Image nexo-web Building 
+ Image nexo-api Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.79kB done
+#1 DONE 0.0s
+
+#2 [web internal] load build definition from web.Dockerfile
+#2 transferring dockerfile: 713B done
+#2 DONE 0.0s
+
+#3 [migrate internal] load build definition from migrate.Dockerfile
+#3 transferring dockerfile: 449B done
+#3 DONE 0.0s
+
+#4 [api internal] load build definition from api.Dockerfile
+#4 transferring dockerfile: 549B done
+#4 DONE 0.0s
+
+#5 [migrate internal] load metadata for docker.io/library/node:24.18.0-alpine
+#5 DONE 0.1s
+
+#6 [worker internal] load build definition from worker.Dockerfile
+#6 transferring dockerfile: 546B done
+#6 DONE 0.1s
+
+#7 [worker internal] load .dockerignore
+#7 transferring context: 273B done
+#7 DONE 0.0s
+
+#8 [api 1/9] FROM docker.io/library/node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
+#8 resolve docker.io/library/node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd done
+#8 DONE 0.0s
+
+#9 [migrate internal] load build context
+#9 transferring context: 524.05kB 0.1s done
+#9 transferring context: 524.05kB 0.1s done
+#9 DONE 0.1s
+
+#10 [migrate 8/9] RUN pnpm --filter @nexo/database... build
+#10 CACHED
+
+#11 [migrate 9/9] RUN pnpm db:generate
+#11 CACHED
+
+#12 [worker build 9/9] RUN pnpm deploy --filter @nexo/worker --prod /out
+#12 CACHED
+
+#13 [worker build 8/9] RUN pnpm --filter @nexo/worker... build
+#13 CACHED
+
+#14 [worker runtime 4/4] COPY --from=build /out ./
+#14 CACHED
+
+#15 [api runtime 3/4] RUN addgroup -S nexo && adduser -S -G nexo nexo
+#15 CACHED
+
+#16 [api build 9/9] RUN pnpm deploy --filter @nexo/api --prod /out
+#16 CACHED
+
+#17 [api build 8/9] RUN pnpm --filter @nexo/api... build
+#17 CACHED
+
+#18 [api runtime 4/4] COPY --from=build /out ./
+#18 CACHED
+
+#19 [web runtime 4/6] COPY --from=build /workspace/apps/web/.next/standalone ./
+#19 CACHED
+
+#20 [api 6/9] COPY . .
+#20 CACHED
+
+#21 [web build 8/8] RUN pnpm --filter @nexo/web... build
+#21 CACHED
+
+#22 [api runtime 2/6] WORKDIR /app
+#22 CACHED
+
+#23 [api 4/9] COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+#23 CACHED
+
+#24 [api 7/9] RUN pnpm install --frozen-lockfile --offline
+#24 CACHED
+
+#25 [api 2/9] WORKDIR /workspace
+#25 CACHED
+
+#26 [web runtime 3/6] RUN addgroup -S nexo && adduser -S -G nexo nexo
+#26 CACHED
+
+#27 [web runtime 5/6] COPY --from=build /workspace/apps/web/.next/static ./apps/web/.next/static
+#27 CACHED
+
+#28 [api 3/9] RUN corepack enable
+#28 CACHED
+
+#29 [api 5/9] RUN pnpm fetch --frozen-lockfile
+#29 CACHED
+
+#30 [web runtime 6/6] COPY --from=build /workspace/apps/web/public ./apps/web/public
+#30 CACHED
+
+#31 [worker] exporting to image
+#31 exporting layers done
+#31 exporting manifest sha256:bc2ea3610a3595b4d3d0e2f5065e95e5f87d51c14c5f7480d3df0e4cefaf45e3 done
+#31 exporting config sha256:57bad7e88d0169a4d36ea705c9360f6bf0504752a9cdcf3577a0a6c33298d358 done
+#31 naming to docker.io/library/nexo-worker:latest done
+#31 unpacking to docker.io/library/nexo-worker:latest done
+#31 DONE 0.0s
+
+#32 [api] exporting to image
+#32 exporting layers done
+#32 exporting manifest sha256:da8e5b7455a53aed4340dcbafff3a1381095e9d285372e1e198967343be457be done
+#32 exporting config sha256:b184b5b68eec19465963d7cd7f4312d382aa87e945ed69dc941bcbfcac30d51c done
+#32 naming to docker.io/library/nexo-api:latest done
+#32 unpacking to docker.io/library/nexo-api:latest done
+#32 DONE 0.0s
+
+#33 [web] exporting to image
+#33 exporting layers done
+#33 exporting manifest sha256:dcd56ba9bab77196bf63524a8481cdf8cdc178c87be3a7efe13cbc27caed0206 done
+#33 exporting config sha256:3192d5c8bb6a722a4503b078337bcaaff1afa6b427ae9a5eacd8e92c784e3277 done
+#33 naming to docker.io/library/nexo-web:latest done
+#33 unpacking to docker.io/library/nexo-web:latest done
+#33 DONE 0.0s
+
+#34 [migrate] exporting to image
+#34 exporting layers done
+#34 exporting manifest sha256:9fb07f71347df266f94bd43fc9e5b745879410780df7ff9aa706b72b94509224 done
+#34 exporting config sha256:7dee6e9c2830f344ff3fd6334c0755a750558b54890b5848926fc8893416c600 done
+#34 naming to docker.io/library/nexo-migrate:latest done
+#34 unpacking to docker.io/library/nexo-migrate:latest done
+#34 DONE 0.0s
+
+#35 [worker] resolving provenance for metadata file
+#35 DONE 0.0s
+
+#36 [migrate] resolving provenance for metadata file
+#36 DONE 0.0s
+
+#37 [api] resolving provenance for metadata file
+#37 DONE 0.0s
+
+#38 [web] resolving provenance for metadata file
+#38 DONE 0.0s
+ Image nexo-api Built 
+ Image nexo-worker Built 
+ Image nexo-web Built 
+ Image nexo-migrate Built 
+
+▶ Iniciando infraestructura y aplicando migraciones/seed
+ Container nexo-postgres-1 Running 
+ Container nexo-otel-collector-1 Running 
+ Container nexo-mailpit-1 Running 
+ Container nexo-minio-1 Running 
+ Container nexo-redis-1 Running 
+ Container nexo-minio-1 Running 
+ Container nexo-minio-1 Waiting 
+ Container nexo-minio-1 Healthy 
+ Container nexo-minio-init-run-070a3bc674dc Creating 
+ Container nexo-minio-init-run-070a3bc674dc Created 
+Added `local` successfully.
+Bucket created successfully `local/nexo-local`.
+Access permission for `local/nexo-local` is set to `private`
+ Container nexo-postgres-1 Running 
+ Container nexo-postgres-1 Waiting 
+ Container nexo-postgres-1 Healthy 
+ Container nexo-migrate-run-142377133367 Creating 
+ Container nexo-migrate-run-142377133367 Created 
+
+> nexo@0.0.0 db:deploy /workspace
+> pnpm --filter @nexo/database migrate:deploy
+
+
+> @nexo/database@0.0.0 migrate:deploy /workspace/packages/database
+> prisma migrate deploy
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "nexo", schema "public" at "postgres:5432"
+
+39 migrations found in prisma/migrations
+
+
+No pending migrations to apply.
+
+> nexo@0.0.0 db:seed /workspace
+> pnpm --filter @nexo/database seed
+
+
+> @nexo/database@0.0.0 seed /workspace/packages/database
+> tsx prisma/seed.ts
+
+
+▶ Iniciando aplicaciones
+ Container nexo-worker-1 Running 
+ Container nexo-web-1 Running 
+ Container nexo-api-1 Running 
+ Container nexo-api-1 Waiting 
+ Container nexo-api-1 Healthy 
+
+▶ Esperando health checks en paralelo
+✓ postgres listo (0 s)
+✓ redis listo (0 s)
+✓ minio listo (0 s)
+✓ mailpit listo (0 s)
+✓ otel-collector listo (0 s)
+✓ api listo (0 s)
+✓ worker listo (0 s)
+✓ web listo (0 s)
+
+▶ Preparando paquete de validación manual
+Generated 156 manual acceptance scenarios
+✓ Paquete listo: /home/hceja/Documents/nexo/artifacts/manual-acceptance/current-run/START_HERE.md
+
+══════════════════════════════════════
+NEXO READY
+
+SERVICE            STATUS     PID      URL
+------------------ ---------- -------- ---
+postgres           READY      455725   localhost:5432
+redis              READY      455855   localhost:6379
+minio              READY      455984   http://localhost:9001
+mailpit            READY      456095   http://localhost:8025
+otel-collector     READY      456224   http://localhost:13133
+api                READY      1551313  http://localhost:3001/health/ready
+worker             READY      1551311  -
+web                READY      1551614  http://localhost:3000
+
+Tiempo total: 68s
+Web: http://localhost:3000
+API: http://localhost:3001
+Mailpit: http://localhost:8025
+Inicio owner: docs/owner-validation/START_HERE.md
+══════════════════════════════════════

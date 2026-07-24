@@ -2,6 +2,15 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
 const mode = process.argv[2] ?? 'reset';
+const fixtureRole = process.argv[3] ?? 'OWNER';
+const fixtureTenantId = process.argv[4] ?? '10000000-0000-4000-8000-000000000001';
+const fixtureRoles = new Set(['OWNER', 'ADMINISTRATOR', 'SUPERVISOR', 'CASHIER', 'READ_ONLY']);
+const fixtureMembershipRole =
+  fixtureRole === 'ADMINISTRATOR'
+    ? 'ADMIN'
+    : fixtureRole === 'READ_ONLY'
+      ? 'ACCOUNTANT'
+      : fixtureRole;
 const allowed = new Set([
   'reset',
   'progress',
@@ -11,6 +20,8 @@ const allowed = new Set([
   'alpha2',
 ]);
 if (!allowed.has(mode)) throw new Error(`Modo no soportado: ${mode}`);
+if (!fixtureRoles.has(fixtureRole)) throw new Error(`Rol de fixture no soportado: ${fixtureRole}`);
+if (!/^[0-9a-f-]{36}$/i.test(fixtureTenantId)) throw new Error('Tenant de fixture inválido.');
 if (process.env.NODE_ENV === 'production')
   throw new Error('Owner onboarding tools are local-only.');
 
@@ -53,9 +64,9 @@ const statements = {
     INSERT INTO user_emails(id,user_id,address,normalized_address,status,is_primary,verified_at,created_at,updated_at)
     VALUES(gen_random_uuid(),'${userId}','owner.${suffix}@nexo.local','owner.${suffix}@nexo.local','VERIFIED',true,now(),now(),now());
     INSERT INTO memberships(id,tenant_id,principal_id,role,access_scope,status,version,created_at,updated_at)
-    VALUES('${membershipId}','${alphaId}','${userId}','OWNER','ALL_BRANCHES','ACTIVE',1,now(),now());
+    VALUES('${membershipId}','${fixtureTenantId}','${userId}','${fixtureMembershipRole}','ALL_BRANCHES','ACTIVE',1,now(),now());
     INSERT INTO membership_authorization_roles(id,tenant_id,membership_id,role_key,scope,created_at,updated_at)
-    VALUES(gen_random_uuid(),'${alphaId}','${membershipId}','OWNER','ORGANIZATION',now(),now());
+    VALUES(gen_random_uuid(),'${fixtureTenantId}','${membershipId}','${fixtureRole}','ORGANIZATION',now(),now());
     SELECT 'owner.${suffix}@nexo.local';`,
   'new-organization': `
     INSERT INTO organizations(id,slug,name,status,country_code,default_locale,default_currency,time_zone,branding,settings,address,date_format,time_format,money_format,regional_settings,version,created_at,updated_at)
@@ -80,6 +91,9 @@ const statements = {
     VALUES('${membershipId}','${tenantId}','${userId}','OWNER','ALL_BRANCHES','ACTIVE',1,now(),now());
     INSERT INTO membership_authorization_roles(id,tenant_id,membership_id,role_key,scope,created_at,updated_at)
     VALUES(gen_random_uuid(),'${tenantId}','${membershipId}','OWNER','ORGANIZATION',now(),now());
+    INSERT INTO organization_features(tenant_id,feature_key,enabled,config,version,created_at,updated_at)
+    SELECT '${tenantId}',feature_key,enabled,config,1,now(),now()
+    FROM organization_features WHERE tenant_id='${alphaId}';
     INSERT INTO branches(tenant_id,id,code,name,status,time_zone,locale,currency,business_hours,settings,version,created_at,updated_at)
     VALUES('${tenantId}','${branchId}','MAIN','Sucursal principal','ACTIVE','America/Mazatlan','es-MX','MXN','{}','{}',1,now(),now());
     INSERT INTO organization_onboarding(tenant_id,status,current_step,answers,version,created_at,updated_at)
@@ -106,7 +120,7 @@ const result = spawnSync(
   { input: `BEGIN; ${statements[mode]} COMMIT;`, encoding: 'utf8' },
 );
 if (result.status !== 0) {
-  process.stderr.write(result.stderr);
+  if (result.stderr) process.stderr.write(result.stderr);
   process.exit(result.status ?? 1);
 }
 const output = result.stdout.trim().split('\n').filter(Boolean).at(-2) ?? result.stdout.trim();

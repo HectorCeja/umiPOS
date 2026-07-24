@@ -1,15 +1,10 @@
 import { expect, test } from '@playwright/test';
-import {
-  browserAudit,
-  evidence,
-  expectClean,
-  login,
-  onePixelPng,
-  web,
-} from './owner-corrective.helpers';
+import { browserAudit, evidence, expectClean, onePixelPng, web } from './owner-corrective.helpers';
+import { createCleanUser, loginClean } from './dynamic-context.helpers';
 
 test('avatar changes immediately in the header and account menu', async ({ page }) => {
-  await login(page);
+  const fixture = createCleanUser();
+  await loginClean(page, fixture.email);
   await page.goto(`${web}/settings/profile`);
   const audit = browserAudit(page);
   await page

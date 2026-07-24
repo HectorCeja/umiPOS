@@ -1,10 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
+import { createCleanUser, password } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const artifacts = 'artifacts/ui-part-2/owner-review/navigation';
 const navigationLabels = ['Reportes', 'Equipo', 'Configuración', 'Ayuda'];
+let fixtureEmail: string;
 
 async function signIn(page: Page) {
   await page.goto(`${web}/login?scene=static`);
@@ -14,8 +16,10 @@ async function signIn(page: Page) {
       .isVisible()
       .catch(() => false)
   ) {
+    await page.getByLabel('Correo electrónico').fill(fixtureEmail);
+    await page.getByRole('textbox', { name: 'Contraseña *' }).fill(password);
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-    await expect(page.getByRole('heading', { name: /Héctor/ })).toBeVisible();
+    await expect(page.locator('[data-nexo-app-shell="canonical"]')).toBeVisible();
   }
 }
 
@@ -50,6 +54,7 @@ async function expectCompleteNavigation(page: Page) {
 
 test.beforeAll(async () => {
   await mkdir(artifacts, { recursive: true });
+  fixtureEmail = createCleanUser().email;
 });
 
 test.describe.serial('responsive shared navigation', () => {
@@ -127,7 +132,7 @@ test.describe.serial('responsive shared navigation', () => {
     const duration = await page
       .locator('.product-sidebar')
       .evaluate((element) => getComputedStyle(element).transitionDuration);
-    expect(duration).toContain('0.001s');
+    expect(duration).toBe('0s');
     await page.screenshot({ path: `${artifacts}/mobile-reduced-motion.png`, fullPage: true });
   });
 

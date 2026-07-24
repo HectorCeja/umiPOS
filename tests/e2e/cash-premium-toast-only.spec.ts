@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { browserAudit, expectClean, login, web } from './owner-corrective.helpers';
+import {
+  browserAudit,
+  chooseCustomNexoSelect,
+  expectClean,
+  login,
+  web,
+} from './owner-corrective.helpers';
 
 test('Caja usa feedback flotante sin región fija superior', async ({ page }) => {
   await login(page);
@@ -9,7 +15,7 @@ test('Caja usa feedback flotante sin región fija superior', async ({ page }) =>
   await expect(page.locator('#cash-feedback')).toHaveCount(0);
   await page.getByText('Configurar puntos de cobro', { exact: true }).click();
   const suffix = Date.now().toString();
-  await page.getByLabel('Nombre', { exact: true }).fill(`Caja E2E ${suffix}`);
+  await chooseCustomNexoSelect(page, 'Nombre', `Caja E2E ${suffix}`);
   await page.getByLabel('Código', { exact: true }).fill(`E2E-${suffix}`);
   const before = await page.evaluate(() => window.scrollY);
   await page.getByRole('button', { name: 'Crear punto de cobro' }).click();

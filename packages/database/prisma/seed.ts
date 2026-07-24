@@ -107,6 +107,13 @@ const personas = [
     'ACCOUNTANT',
     0,
   ],
+  [
+    '41000000-0000-4000-8000-000000000007',
+    'alpha.lockout@nexo.local',
+    'Alpha Lockout',
+    'EMPLOYEE',
+    0,
+  ],
   ['42000000-0000-4000-8000-000000000001', 'beta.owner@nexo.local', 'Beta Owner', 'OWNER', 1],
   ['42000000-0000-4000-8000-000000000002', 'beta.admin@nexo.local', 'Beta Admin', 'ADMIN', 1],
   ['42000000-0000-4000-8000-000000000003', 'beta.cashier@nexo.local', 'Beta Cashier', 'CASHIER', 1],

@@ -60,34 +60,43 @@ export function ProductCard({
   status?: string;
   typeLabel?: string;
 }) {
+  const hasImage = Boolean(imageSrc);
+  const hasVisual = Boolean(imageSrc ?? icon);
+
   return (
     <button
       type="button"
       className="nexo-card nexo-product-card product-catalog-card"
-      data-has-image={imageSrc ? 'true' : 'false'}
+      data-has-image={hasImage ? 'true' : 'false'}
       onClick={onSelect}
     >
-      <span className="nexo-product-card__media">
-        {imageSrc && (
-          <img
-            src={imageSrc}
-            alt={imageAlt ?? name}
-            onError={(event) => {
-              event.currentTarget.hidden = true;
-              event.currentTarget.parentElement?.setAttribute('data-image-failed', 'true');
-              event.currentTarget.nextElementSibling?.removeAttribute('hidden');
-            }}
-          />
-        )}
-        <span className="nexo-product-card__fallback" hidden={Boolean(imageSrc)} aria-hidden="true">
-          {icon}
-        </span>
-        {imageSrc && (
-          <span className="nexo-product-card__type" title={typeLabel} aria-label={typeLabel}>
+      {hasVisual && (
+        <span className="nexo-product-card__media">
+          {imageSrc && (
+            <img
+              src={imageSrc}
+              alt={imageAlt ?? name}
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+                event.currentTarget.parentElement?.setAttribute('data-image-failed', 'true');
+                event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+              }}
+            />
+          )}
+          <span
+            className="nexo-product-card__fallback"
+            hidden={Boolean(imageSrc)}
+            aria-hidden="true"
+          >
             {icon}
           </span>
-        )}
-      </span>
+          {imageSrc && (
+            <span className="nexo-product-card__type" title={typeLabel} aria-label={typeLabel}>
+              {icon}
+            </span>
+          )}
+        </span>
+      )}
       <span className="nexo-product-card__content">
         <strong>{name}</strong>
         {Boolean(category ?? price) && (

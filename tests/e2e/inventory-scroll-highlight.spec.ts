@@ -2,15 +2,15 @@ import { expect, test } from '@playwright/test';
 import {
   browserAudit,
   chooseNexoSelect,
+  createProductForOwnerTest,
   ensureInventoryLocation,
   expectClean,
-  login,
   web,
 } from './owner-corrective.helpers';
 
 test('Consultar existencias revela, enfoca y resalta Saldo por estado', async ({ page }) => {
   const audit = browserAudit(page);
-  await login(page);
+  await createProductForOwnerTest(page, 'Inventario resaltado');
   await ensureInventoryLocation(page);
   await page.goto(`${web}/inventory`);
   await chooseNexoSelect(page, 'Producto o presentación', 0);

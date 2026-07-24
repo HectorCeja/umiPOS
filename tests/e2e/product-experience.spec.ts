@@ -30,9 +30,9 @@ test.describe('Premium product experience', () => {
     });
     expect(login.ok()).toBe(true);
     await page.goto('http://localhost:3000/');
-    await expect(page.getByRole('heading', { name: /Héctor/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Buenos días, Alpha/ })).toBeVisible();
     await expect(
-      page.getByRole('button', { name: /Organización activa: Café Horizonte/ }),
+      page.getByRole('button', { name: /Organización activa: Organization Alpha/ }),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /Sucursal activa: Centro/ })).toBeVisible();
     await expect(page.getByText('Propietario').first()).toBeVisible();

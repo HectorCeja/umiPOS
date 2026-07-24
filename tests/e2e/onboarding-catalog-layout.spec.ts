@@ -3,13 +3,13 @@ import {
   browserAudit,
   evidence,
   expectClean,
-  login,
+  loginIsolatedOnboarding,
   setOnboardingStep,
 } from './owner-corrective.helpers';
 
 test('catalog controls align and category chips wrap with readable spacing', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await login(page);
+  await loginIsolatedOnboarding(page);
   await setOnboardingStep(page, 7);
   const audit = browserAudit(page);
   const toolbar = page.locator('.nexo-gallery-picker__toolbar');

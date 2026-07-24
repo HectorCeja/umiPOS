@@ -7,7 +7,15 @@ test('Cash feedback is visible without becoming an automatic scroll destination'
   await login(page);
   await completeOnboarding(page);
   await page.goto(`${web}/cash`);
-  const target = page.locator('#cash-feedback');
-  await expect(target).toBeAttached();
-  await expect(target).not.toHaveAttribute('tabindex');
+  await page.getByText('Configurar puntos de cobro', { exact: true }).click();
+  const suffix = Date.now().toString();
+  await page.getByRole('combobox', { name: 'Nombre', exact: true }).click();
+  await page.getByRole('searchbox', { name: 'Buscar en Nombre' }).fill(`Caja scroll ${suffix}`);
+  await page.keyboard.press('Enter');
+  await page.getByLabel('Código', { exact: true }).fill(`SCR-${suffix}`);
+  const before = await page.evaluate(() => window.scrollY);
+  await page.getByRole('button', { name: 'Crear punto de cobro' }).click();
+  const target = page.locator('.nexo-toast-region .nexo-premium-toast');
+  await expect(target).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
 });

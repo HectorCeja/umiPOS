@@ -1,6 +1,6 @@
 'use client';
 
-import { autoUpdate, offset, shift, size, useFloating } from '@floating-ui/react-dom';
+import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react-dom';
 import {
   useEffect,
   useId,
@@ -123,6 +123,7 @@ export function NexoSelect({
       // The popup is a physical continuation of the trigger. Keep positioning
       // on this Floating UI layer and visual motion on a child surface.
       offset(0),
+      flip({ padding: 12 }),
       shift({ padding: 12 }),
       size({
         padding: 12,

@@ -139,5 +139,42 @@ temp/
 
 artifacts/
 
+# Small certification records consumed as test inputs must exist in a clean clone.
+# Runtime screenshots, videos, traces, caches, and newly generated evidence remain ignored.
+!artifacts/
+artifacts/*
+!artifacts/premium-ux-part-3a/
+artifacts/premium-ux-part-3a/*
+!artifacts/premium-ux-part-3a/SELF_CRITIQUE.md
+!artifacts/premium-ux-part-3b/
+artifacts/premium-ux-part-3b/*
+!artifacts/premium-ux-part-3b/OWNER_DELIGHT_SCORE.md
+!artifacts/premium-ux-part-3b/SELF_CRITIQUE_ROUND_2.md
+!artifacts/premium-ux-part-4a/
+artifacts/premium-ux-part-4a/*
+!artifacts/premium-ux-part-4a/BEST_IN_CLASS_REPORT.md
+!artifacts/premium-ux-part-4a/COMPETITIVE_ANALYSIS.md
+!artifacts/premium-ux-part-4a/DESIGN_ALTERNATIVES.md
+!artifacts/premium-ux-part-4a/HERO_IMAGE_TEST.md
+!artifacts/premium-ux-part-4a/KEYNOTE_TEST.md
+!artifacts/premium-ux-part-4a/RED_TEAM_PRODUCT_REVIEW.md
+!artifacts/premium-ux-part-4a/WOW_TEST.md
+!artifacts/premium-ux-part-4b/
+artifacts/premium-ux-part-4b/*
+!artifacts/premium-ux-part-4b/FINAL_RED_TEAM.md
+!artifacts/premium-ux-part-4b/MARKETING_READINESS.md
+!artifacts/premium-ux-part-4b/MASTERPIECE_CERTIFICATION.md
+!artifacts/premium-ux-part-4b/OWNER_DELIGHT_FINAL.md
+!artifacts/premium-ux-part-4b/PRODUCT_EXCELLENCE.md
+!artifacts/premium-ux-part-4b/SCREENSHOT_REVIEW.md
+!artifacts/owner-final-acceptance-master-part-2c/
+artifacts/owner-final-acceptance-master-part-2c/*
+!artifacts/owner-final-acceptance-master-part-2c/logs/
+artifacts/owner-final-acceptance-master-part-2c/logs/*
+!artifacts/owner-final-acceptance-master-part-2c/logs/owner-data-after.json
+!artifacts/owner-final-acceptance-master-part-2c/logs/prepare-1.log
+!artifacts/owner-final-acceptance-master-part-2c/logs/prepare-2.log
+!artifacts/owner-final-acceptance-master-part-2c/logs/prepare-3.log
+
 # Si en el futuro quieren conservar la evidencia de certificaciones en Git,
 # simplemente eliminen esta línea.

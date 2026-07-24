@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  chooseCustomNexoSelect,
   chooseNexoSelect,
   ensureInventoryLocation,
   login,
@@ -30,7 +31,7 @@ test('evidencia final upload onboarding sin desmontaje', async ({ page }) => {
   await setOnboardingStep(page, 7);
   const form = page.locator('.onboarding-product-builder');
   await form.getByLabel('Nombre').fill('Producto Final Touches');
-  await form.getByLabel('Categoría').fill('Especialidades');
+  await chooseCustomNexoSelect(page, 'Categoría', 'Especialidades');
   await form.getByLabel('Precio sugerido (MXN)').fill('95');
   await form.getByLabel('Descripción').fill('Producto real con imagen persistente');
   await shot(page, '01-onboarding-upload-antes.png');

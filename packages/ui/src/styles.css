@@ -2956,6 +2956,12 @@
     border-color var(--nexo-duration-fast) var(--nexo-ease-standard),
     box-shadow var(--nexo-duration-fast) var(--nexo-ease-standard);
 }
+.nexo-product-card[data-has-image='false'] {
+  min-height: 8rem;
+}
+.nexo-product-card[data-has-image='false'] .nexo-product-card__content strong {
+  padding-inline-end: 0;
+}
 .nexo-product-card:hover {
   border-color: var(--nexo-border-hover);
   box-shadow: var(--nexo-shadow-lg);

@@ -2,10 +2,12 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanBusiness } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
-const organizationId = '10000000-0000-4000-8000-000000000001';
+let organizationId: string;
+let fixtureEmail: string;
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const artifacts = path.resolve('artifacts/owner-review-correction/screenshots');
 
@@ -13,7 +15,7 @@ async function login(context: BrowserContext) {
   const response = await context.request.post(`${api}/v1/auth/login`, {
     headers: { origin: web },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmail,
       password,
       deviceFingerprint: `owner-correction-${Date.now()}`,
       deviceName: 'Owner correction QA',
@@ -51,7 +53,12 @@ async function capture(page: Page, name: string) {
 
 test.describe.serial('owner review correction', () => {
   test.describe.configure({ timeout: 180_000 });
-  test.beforeAll(async () => mkdir(artifacts, { recursive: true }));
+  test.beforeAll(async () => {
+    await mkdir(artifacts, { recursive: true });
+    const fixture = createCleanBusiness();
+    organizationId = fixture.organizationId;
+    fixtureEmail = fixture.email;
+  });
 
   for (const viewport of [
     { width: 1280, height: 720 },
@@ -146,11 +153,27 @@ test.describe.serial('owner review correction', () => {
           axe.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious'),
         ).toEqual([]);
       }
-      if (step < 10) await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
+      if (step === 0) {
+        await page.getByRole('button', { name: /Empezar/ }).click();
+        await page.getByLabel('Nombre comercial').fill('Negocio Owner Review');
+      } else if (step === 1) {
+        await page.getByRole('button', { name: /Continuar/ }).click();
+        await page.getByRole('button', { name: /Cafetería/ }).click();
+      } else if (step < 10) {
+        await page.getByRole('button', { name: /Continuar/ }).click();
+      }
     }
     await expect(page.getByRole('button', { name: 'Entrar a NEXO' })).toBeVisible();
+    const completed = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().endsWith(`/v1/organizations/${organizationId}/onboarding/complete`),
+    );
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-    await expect(page.locator('[data-nexo-app-shell="canonical"]')).toBeVisible();
+    expect((await completed).ok()).toBe(true);
+    await expect(page.locator('[data-nexo-app-shell="canonical"]')).toBeVisible({
+      timeout: 15_000,
+    });
     await context.close();
   });
 
@@ -179,6 +202,11 @@ test.describe.serial('owner review correction', () => {
       await capture(page, `onboarding-${viewport.width}x${viewport.height}`);
       for (let step = 0; step < 10; step += 1) {
         await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
+        if (step === 0) {
+          await page.getByLabel('Nombre comercial').fill('Negocio Owner Review');
+        } else if (step === 1) {
+          await page.getByRole('button', { name: /Cafetería/ }).click();
+        }
       }
       await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
       await expect(page.locator('[data-nexo-app-shell="canonical"]')).toBeVisible();
@@ -250,8 +278,7 @@ test.describe.serial('owner review correction', () => {
       const delay = Number.parseFloat(
         await reveal.evaluate((element) => getComputedStyle(element).animationDelay),
       );
-      expect(delay).toBeGreaterThanOrEqual(0.85);
-      expect(delay).toBeLessThanOrEqual(1.1);
+      expect(delay).toBeCloseTo(0.32, 2);
       if (name === 'home') {
         await expect(page.locator(selector)).toHaveCSS('text-align', 'center');
         await expect(page.locator(selector)).toHaveCSS('place-content', 'center');

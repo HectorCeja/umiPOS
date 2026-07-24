@@ -11,6 +11,7 @@ test('mutation copy is commercial, calm and specific', async () => {
   const text = (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join('\n');
   expect(text).not.toContain("setNotice('Configuración guardada.')");
   expect(text).not.toContain("setNotice('La operación quedó registrada correctamente.')");
-  expect(text).toContain('Ya forma parte de tu catálogo');
+  expect(text).toContain('<SaveStatus state={mutation}');
+  expect(text).toContain('Agregar al catálogo');
   expect(text).toContain('Invitación enviada');
 });

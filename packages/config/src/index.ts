@@ -42,6 +42,8 @@ const serverEnvironmentSchema = z
     AUTH_PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(3600),
     AUTH_EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400),
     AUTH_DEVICE_RECOGNITION_TTL_SECONDS: z.coerce.number().int().min(3600).max(7_776_000),
+    AUTH_LOGIN_IP_RATE_LIMIT: z.coerce.number().int().min(30).max(10_000).default(30),
+    AUTH_LOGIN_ACCOUNT_RATE_LIMIT: z.coerce.number().int().min(10).max(10_000).default(10),
     AUTH_MAX_LOGIN_ATTEMPTS: z.coerce.number().int().min(5).max(100),
     AUTH_LOCK_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400),
     AUTH_PASSWORD_BLOCKLIST_FILE: z.string().min(1),
@@ -174,6 +176,8 @@ export type AuthenticationConfiguration = Readonly<{
   passwordResetTtlSeconds: number;
   emailVerificationTtlSeconds: number;
   deviceRecognitionTtlSeconds: number;
+  loginIpRateLimit: number;
+  loginAccountRateLimit: number;
   maxLoginAttempts: number;
   lockTtlSeconds: number;
   passwordBlocklistFile: string;
@@ -193,6 +197,8 @@ export function authenticationConfigurationFromEnvironment(
     emailVerificationTtlSeconds: environment.AUTH_EMAIL_VERIFICATION_TTL_SECONDS,
     identity: identityConfigurationFromEnvironment(environment),
     idleTtlSeconds: environment.AUTH_IDLE_TTL_SECONDS,
+    loginAccountRateLimit: environment.AUTH_LOGIN_ACCOUNT_RATE_LIMIT,
+    loginIpRateLimit: environment.AUTH_LOGIN_IP_RATE_LIMIT,
     lockTtlSeconds: environment.AUTH_LOCK_TTL_SECONDS,
     maxLoginAttempts: environment.AUTH_MAX_LOGIN_ATTEMPTS,
     passwordBlocklistFile: environment.AUTH_PASSWORD_BLOCKLIST_FILE,

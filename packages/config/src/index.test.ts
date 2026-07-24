@@ -53,6 +53,8 @@ describe('parseServerEnvironment', () => {
   it('applies safe development defaults', () => {
     const result = parseServerEnvironment(validEnvironment);
     expect(result.API_PORT).toBe(3001);
+    expect(authenticationConfigurationFromEnvironment(result).loginIpRateLimit).toBe(30);
+    expect(authenticationConfigurationFromEnvironment(result).loginAccountRateLimit).toBe(10);
     expect(result.S3_FORCE_PATH_STYLE).toBe(true);
     expect(identityConfigurationFromEnvironment(result).features.passkeys).toBe(false);
   });

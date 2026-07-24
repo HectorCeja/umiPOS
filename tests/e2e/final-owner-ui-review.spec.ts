@@ -2,17 +2,19 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const screenshots = path.resolve('artifacts/final-owner-ui-review/screenshots');
+let fixtureEmail: string;
 
 async function login(context: BrowserContext) {
   const response = await context.request.post(`${api}/v1/auth/login`, {
     headers: { origin: web },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmail,
       password,
       deviceFingerprint: `final-owner-ui-${Date.now()}`,
       deviceName: 'Final owner UI review',
@@ -34,7 +36,10 @@ async function noSeriousAxe(page: Page) {
 
 test.describe.serial('final owner UI review', () => {
   test.describe.configure({ timeout: 180_000 });
-  test.beforeAll(async () => mkdir(screenshots, { recursive: true }));
+  test.beforeAll(async () => {
+    await mkdir(screenshots, { recursive: true });
+    fixtureEmail = createCleanUser().email;
+  });
 
   test('context selectors have premium spacing, long-name resilience and anchored menus', async ({
     browser,
@@ -110,7 +115,7 @@ test.describe.serial('final owner UI review', () => {
         zIndex: '120',
       });
     });
-    await branch.click();
+    await branch.click({ force: true });
     const branchMenu = page.getByRole('menu', { name: 'Sucursales disponibles' });
     await expect(branchMenu).toBeVisible();
     await expect(branchMenu).toHaveAttribute('data-placement', /top/);

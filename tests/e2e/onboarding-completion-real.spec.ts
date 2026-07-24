@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { browserAudit, expectClean, onePixelPng, web } from './owner-corrective.helpers';
+import {
+  browserAudit,
+  chooseCustomNexoSelect,
+  expectClean,
+  onePixelPng,
+  web,
+} from './owner-corrective.helpers';
 
 test('Alpha2 completa onboarding real con producto e imagen', async ({ page }) => {
   test.setTimeout(180_000);
@@ -19,7 +25,7 @@ test('Alpha2 completa onboarding real con producto e imagen', async ({ page }) =
   const builder = page.locator('.onboarding-product-builder');
   await builder.getByLabel('Nombre').fill('Latte grande');
   await builder.getByLabel('Descripción').fill('Espresso y leche');
-  await builder.getByLabel('Categoría').fill('Bebidas');
+  await chooseCustomNexoSelect(page, 'Categoría', 'Bebidas');
   await builder.getByLabel('Precio').fill('78.50');
   await builder
     .locator('input[type=file]')

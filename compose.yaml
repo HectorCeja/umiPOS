@@ -135,6 +135,8 @@ services:
       AUTH_PASSWORD_RESET_TTL_SECONDS: 1800
       AUTH_EMAIL_VERIFICATION_TTL_SECONDS: 86400
       AUTH_DEVICE_RECOGNITION_TTL_SECONDS: 2592000
+      AUTH_LOGIN_IP_RATE_LIMIT: ${NEXO_E2E_AUTH_LOGIN_IP_RATE_LIMIT:-10000}
+      AUTH_LOGIN_ACCOUNT_RATE_LIMIT: ${NEXO_E2E_AUTH_LOGIN_ACCOUNT_RATE_LIMIT:-10000}
       AUTH_MAX_LOGIN_ATTEMPTS: 10
       AUTH_LOCK_TTL_SECONDS: 900
       AUTH_PASSWORD_BLOCKLIST_FILE: /run/secrets/nexo-password-blocklist.txt
@@ -166,6 +168,8 @@ services:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
+      args:
+        NEXO_SOURCE_FINGERPRINT: ${NEXO_API_SOURCE_FINGERPRINT:-unversioned}
     environment:
       <<: *app-environment
       API_HOST: 0.0.0.0
@@ -195,6 +199,8 @@ services:
     build:
       context: .
       dockerfile: infra/docker/worker.Dockerfile
+      args:
+        NEXO_SOURCE_FINGERPRINT: ${NEXO_WORKER_SOURCE_FINGERPRINT:-unversioned}
     environment:
       <<: *app-environment
       DATABASE_URL: postgresql://nexo_worker:nexo_worker_local_only@postgres:5432/nexo?schema=public
@@ -223,6 +229,8 @@ services:
     build:
       context: .
       dockerfile: infra/docker/web.Dockerfile
+      args:
+        NEXO_SOURCE_FINGERPRINT: ${NEXO_WEB_SOURCE_FINGERPRINT:-unversioned}
     environment:
       NODE_ENV: production
       LOCAL_DEVELOPMENT: 'true'

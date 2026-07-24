@@ -2,11 +2,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const root = path.resolve('artifacts/final-immersion');
+let fixtureEmail = '';
 
 const artworkRoutes = [
   ['home', '/', 'woman-pos'],
@@ -21,13 +23,17 @@ async function login(context: BrowserContext) {
   const response = await context.request.post(`${api}/v1/auth/login`, {
     headers: { origin: web },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmail,
       password,
       deviceFingerprint: `final-immersion-${Date.now()}`,
       deviceName: 'Final immersion QA',
     },
   });
   expect(response.ok()).toBe(true);
+  await context.addInitScript(() => {
+    localStorage.setItem('nexo.active-organization', '10000000-0000-4000-8000-000000000001');
+    localStorage.setItem('nexo.active-branch', '20000000-0000-4000-8000-000000000001');
+  });
 }
 
 async function waitForArtwork(page: Page, artworkId: string) {
@@ -46,6 +52,7 @@ test.describe.serial('NEXO final immersion pass', () => {
   test.describe.configure({ timeout: 240_000 });
 
   test.beforeAll(async () => {
+    fixtureEmail = createCleanUser().email;
     await Promise.all([
       mkdir(path.join(root, 'screenshots', 'after'), { recursive: true }),
       mkdir(path.join(root, 'videos'), { recursive: true }),

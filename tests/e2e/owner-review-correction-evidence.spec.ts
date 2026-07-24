@@ -1,35 +1,25 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { access, copyFile, mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanBusiness } from './dynamic-context.helpers';
+import { setOnboardingStep } from './owner-corrective.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
-const organizationId = '10000000-0000-4000-8000-000000000001';
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const root = path.resolve('artifacts/owner-review-correction');
+const artifactMode = process.env.NEXO_E2E_ARTIFACT_MODE === 'evidence';
 
-async function login(context: BrowserContext) {
+async function login(context: BrowserContext, email = 'alpha.owner@nexo.local') {
   const response = await context.request.post(`${api}/v1/auth/login`, {
     headers: { origin: web },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email,
       password,
       deviceFingerprint: `owner-evidence-${Date.now()}`,
       deviceName: 'Owner correction evidence',
     },
   });
-  expect(response.ok()).toBe(true);
-}
-
-async function restart(context: BrowserContext) {
-  const current = (await (
-    await context.request.get(`${api}/v1/organizations/${organizationId}/onboarding`)
-  ).json()) as { version: number };
-  const csrf = (await context.cookies()).find(({ name }) => name === 'nexo_csrf')?.value ?? '';
-  const response = await context.request.post(
-    `${api}/v1/organizations/${organizationId}/onboarding/restart`,
-    { headers: { 'x-csrf-token': csrf }, data: { version: current.version } },
-  );
   expect(response.ok()).toBe(true);
 }
 
@@ -46,22 +36,44 @@ test.describe.serial('owner correction evidence', () => {
   });
 
   test('records ten owner-review journeys', async ({ browser }) => {
+    if (!artifactMode) {
+      const ownerContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      await login(ownerContext);
+      const ownerPage = await ownerContext.newPage();
+      await ownerPage.goto(web);
+      await expect(ownerPage.locator('[data-nexo-app-shell="canonical"]')).toBeVisible();
+      for (const label of ['Productos', 'Inventario', 'Reportes', 'Ventas', 'Caja']) {
+        await ownerPage.getByRole('link', { name: label, exact: true }).click();
+        await expect(ownerPage.getByRole('heading', { level: 1 }).first()).toBeVisible();
+      }
+      await ownerContext.close();
+
+      const business = createCleanBusiness();
+      const onboardingContext = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+      });
+      await login(onboardingContext, business.email);
+      const onboardingPage = await onboardingContext.newPage();
+      await onboardingPage.goto(web);
+      await expect(onboardingPage.locator('.guided-onboarding')).toBeVisible();
+      await onboardingPage.getByRole('button', { name: 'Empezar' }).click();
+      await expect(onboardingPage.locator('.guided-onboarding')).toHaveAttribute('data-step', '1');
+      await onboardingContext.close();
+      return;
+    }
+
     const record = async (
       name: string,
       viewport: { width: number; height: number },
       action: (page: Page, context: BrowserContext) => Promise<void>,
       reducedMotion: 'reduce' | 'no-preference' = 'no-preference',
     ) => {
-      try {
-        await access(path.join(root, 'videos', `${name}.webm`));
-        return;
-      } catch {
-        // Missing evidence is recorded below.
-      }
       const context = await browser.newContext({
         viewport,
         reducedMotion,
-        recordVideo: { dir: path.join(root, 'videos', '.raw'), size: viewport },
+        ...(artifactMode
+          ? { recordVideo: { dir: path.join(root, 'videos', '.raw'), size: viewport } }
+          : {}),
       });
       const page = await context.newPage();
       await action(page, context);
@@ -120,12 +132,11 @@ test.describe.serial('owner correction evidence', () => {
       ['08-onboarding-review', 10],
     ] as const) {
       await record(name, { width: 1280, height: 720 }, async (page, context) => {
-        await login(context);
-        await restart(context);
+        const business = createCleanBusiness();
+        await login(context, business.email);
         await page.goto(web);
-        for (let step = 0; step < targetStep; step += 1) {
-          await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
-        }
+        await setOnboardingStep(page, targetStep);
+        await page.goto(web);
         const scroll = page.locator('.onboarding-scroll-container');
         await scroll.evaluate((element) =>
           element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' }),
@@ -156,8 +167,8 @@ test.describe.serial('owner correction evidence', () => {
     );
 
     await record('10-mobile-onboarding', { width: 390, height: 844 }, async (page, context) => {
-      await login(context);
-      await restart(context);
+      const business = createCleanBusiness();
+      await login(context, business.email);
       await page.goto(web);
       await page.getByRole('button', { name: 'Empezar' }).click();
       await page
@@ -207,12 +218,16 @@ test.describe.serial('owner correction evidence', () => {
       await expect(page.locator('.nexo-editorial-header--cash')).toBeVisible();
       samples.salesCash.push(performance.now() - started);
     }
-    await restart(context);
-    await page.goto(`${web}/?scene=static`);
+    const onboardingBusiness = createCleanBusiness();
+    const onboardingContext = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await login(onboardingContext, onboardingBusiness.email);
+    const onboardingPage = await onboardingContext.newPage();
+    await onboardingPage.goto(`${web}/?scene=static`);
     let started = performance.now();
-    await page.getByRole('button', { name: 'Empezar' }).click();
-    await expect(page.locator('.guided-onboarding')).toHaveAttribute('data-step', '1');
+    await onboardingPage.getByRole('button', { name: 'Empezar' }).click();
+    await expect(onboardingPage.locator('.guided-onboarding')).toHaveAttribute('data-step', '1');
     samples.onboardingTransition.push(performance.now() - started);
+    await onboardingContext.close();
     const summary = Object.fromEntries(
       Object.entries(samples).map(([key, values]) => [
         key,

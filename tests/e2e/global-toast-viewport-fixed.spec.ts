@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, web } from './owner-corrective.helpers';
+import { chooseCustomNexoSelect, login, web } from './owner-corrective.helpers';
 
 for (const width of [1280, 390, 320])
   test(`toast permanece dentro del viewport a ${width}px`, async ({ page }) => {
@@ -8,7 +8,7 @@ for (const width of [1280, 390, 320])
     await page.goto(`${web}/cash`);
     await page.getByText('Configurar puntos de cobro', { exact: true }).click();
     const suffix = `${width}-${Date.now()}`;
-    await page.getByLabel('Nombre', { exact: true }).fill(`Caja toast ${suffix}`);
+    await chooseCustomNexoSelect(page, 'Nombre', `Caja toast ${suffix}`);
     await page.getByLabel('Código', { exact: true }).fill(`TV-${suffix}`);
     const scrollState = () =>
       page.evaluate(() => {

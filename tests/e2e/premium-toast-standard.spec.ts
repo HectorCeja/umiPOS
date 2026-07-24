@@ -11,7 +11,7 @@ test('SaveStatus autoritativo usa el provider único en la parte superior derech
   expect(experience).toContain('<PremiumToastPortal');
   expect(primitives).toContain("root.id = 'nexo-toast-provider'");
   expect(primitives).toContain('document.body.append(root)');
-  expect(styles).toContain('inset: max(1rem, env(safe-area-inset-top))');
+  expect(styles).toContain('max(var(--nexo-toast-safe-top, 0px), env(safe-area-inset-top))');
 });
 
 test('una mutación real de Productos produce toast global sin mover el scroll', async ({

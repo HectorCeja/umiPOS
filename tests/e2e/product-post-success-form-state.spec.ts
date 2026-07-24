@@ -10,10 +10,10 @@ test('formulario de Producto vuelve a estado neutral después del éxito', async
   const name = page.getByLabel('Nombre del producto');
   await expect(name).toHaveValue('');
   await expect(name).toHaveAttribute('aria-invalid', 'false');
-  const visual = await name.evaluate((element) => ({
-    border: getComputedStyle(element).borderColor,
-    invalid: element.matches(':user-invalid'),
-  }));
-  expect(visual.invalid).toBe(false);
+  await expect
+    .poll(() => name.evaluate((element) => element.matches(':user-invalid')), {
+      message: 'the remounted product form reaches its neutral native-validity state',
+    })
+    .toBe(false);
   await expect(page.locator('#new-product [role=alert]')).toHaveCount(0);
 });

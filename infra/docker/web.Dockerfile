@@ -8,6 +8,8 @@ RUN pnpm install --frozen-lockfile --offline
 RUN pnpm --filter @nexo/web... build
 
 FROM node:24.18.0-alpine AS runtime
+ARG NEXO_SOURCE_FINGERPRINT=unversioned
+LABEL org.nexo.source-fingerprint="${NEXO_SOURCE_FINGERPRINT}"
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
 ENV PORT=3000

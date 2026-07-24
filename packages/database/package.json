@@ -15,7 +15,9 @@
     "lint": "eslint . --max-warnings=0",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts",
+    "seed": "pnpm seed:prerequisites && pnpm seed:run",
+    "seed:prerequisites": "pnpm --filter @nexo/authorization build && pnpm --filter @nexo/control-plane build",
+    "seed:run": "tsx prisma/seed.ts",
     "typecheck": "prisma validate && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage --passWithNoTests"

@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { completeOnboarding, login, setOnboardingStep, web } from './owner-corrective.helpers.js';
+import {
+  completeOnboarding,
+  loginIsolatedOnboarding,
+  setOnboardingStep,
+  web,
+} from './owner-corrective.helpers.js';
 
 const root = path.resolve('artifacts/premium-ux-part-1b/screenshots');
 async function shot(page: import('@playwright/test').Page, folder: string, name: string) {
@@ -19,7 +24,7 @@ test('capture certified component and layout surfaces', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(web);
   await shot(page, 'desktop', 'login');
-  await login(page);
+  await loginIsolatedOnboarding(page);
   await setOnboardingStep(page, 4);
   await shot(page, 'desktop', 'onboarding');
   await completeOnboarding(page);

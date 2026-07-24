@@ -1,14 +1,6 @@
 import { expect, test } from '@playwright/test';
-import {
-  api,
-  browserAudit,
-  evidence,
-  expectClean,
-  login,
-  onePixelPng,
-} from './owner-corrective.helpers';
-
-const organizationId = '10000000-0000-4000-8000-000000000001';
+import { api, browserAudit, evidence, expectClean, onePixelPng } from './owner-corrective.helpers';
+import { createCleanBusiness, loginClean } from './dynamic-context.helpers';
 
 type OnboardingState = {
   answers: Record<string, unknown>;
@@ -18,14 +10,16 @@ type OnboardingState = {
   version: number;
 };
 
-async function csrf(page: Parameters<typeof login>[0]) {
+async function csrf(page: Parameters<typeof loginClean>[0]) {
   return (await page.context().cookies()).find(({ name }) => name === 'nexo_csrf')?.value ?? '';
 }
 
 test('image uploader remains recoverable for valid, invalid, replace and remove operations', async ({
   page,
 }) => {
-  await login(page);
+  const fixture = createCleanBusiness();
+  const organizationId = fixture.organizationId;
+  await loginClean(page, fixture.email);
   const audit = browserAudit(page);
   const stateResponse = await page.request.get(
     `${api}/v1/organizations/${organizationId}/onboarding`,
@@ -55,6 +49,10 @@ test('image uploader remains recoverable for valid, invalid, replace and remove 
             businessName: 'Organization Alpha',
             branchName: 'Branch Centro',
             businessType: 'COFFEE_SHOP',
+            country: 'MX',
+            currency: 'MXN',
+            locale: 'es-MX',
+            timeZone: 'America/Mazatlan',
             journeyStep: 7,
             catalogChoice: 'custom',
             customProduct: { name: 'Producto imagen QA', image: '' },
@@ -70,7 +68,11 @@ test('image uploader remains recoverable for valid, invalid, replace and remove 
     await input.setInputFiles({ name: 'first.png', mimeType: 'image/png', buffer: onePixelPng });
     await expect(uploader.getByAltText('Vista previa')).toBeVisible();
     await expect(page.locator('.onboarding-product-builder')).toBeVisible();
-    await evidence(page, 'onboarding-product-image-preview.png');
+    await evidence(
+      page,
+      'onboarding-product-image-preview.png',
+      'artifacts/onboarding-product-image/screenshots',
+    );
     await uploader.getByRole('button', { name: 'Eliminar imagen' }).click();
     await expect(uploader.getByAltText('Vista previa')).toHaveCount(0);
     await input.setInputFiles({

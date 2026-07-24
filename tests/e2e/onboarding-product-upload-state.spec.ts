@@ -3,13 +3,13 @@ import {
   browserAudit,
   evidence,
   expectClean,
-  login,
+  loginIsolatedOnboarding,
   onePixelPng,
   setOnboardingStep,
 } from './owner-corrective.helpers';
 
 test('real onboarding keeps all catalog content mounted after upload', async ({ page }) => {
-  await login(page);
+  await loginIsolatedOnboarding(page);
   const audit = browserAudit(page);
   await setOnboardingStep(page, 7);
   const before = page.locator('.onboarding-product-builder');

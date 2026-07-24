@@ -6,30 +6,37 @@ import {
   type BrowserContext,
   type Page,
 } from '@playwright/test';
-import { chooseNexoSelect } from './owner-corrective.helpers';
+import { chooseCustomNexoSelect, chooseNexoSelect, onePixelPng } from './owner-corrective.helpers';
+import { createCleanBusiness, password } from './dynamic-context.helpers';
 
 const apiBase = 'http://localhost:3001';
-const organizationId = '10000000-0000-4000-8000-000000000001';
 
 test.describe.serial('Unified Product Experience 40/40', () => {
   let browser: Browser, context: BrowserContext, page: Page;
+  let organizationId: string;
+  let fixtureEmail: string;
   test.beforeAll(async () => {
     test.setTimeout(60_000);
     browser = await chromium.launch();
     context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
     page = await context.newPage();
+    const fixture = createCleanBusiness();
+    organizationId = fixture.organizationId;
+    fixtureEmail = fixture.email;
     await page.goto('http://localhost:3000');
+    await page.getByLabel('Correo electrónico').fill(fixture.email);
+    await page.getByRole('textbox', { name: 'Contraseña *' }).fill(password);
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
     await page.locator('.guided-onboarding, .product-main').first().waitFor();
     const current = await page.request.get(
-      'http://localhost:3001/v1/organizations/10000000-0000-4000-8000-000000000001/onboarding',
+      `${apiBase}/v1/organizations/${organizationId}/onboarding`,
     );
     const state = (await current.json()) as { version: number };
     const csrf = (await context.cookies()).find((x) => x.name === 'nexo_csrf')?.value ?? '';
-    await page.request.post(
-      'http://localhost:3001/v1/organizations/10000000-0000-4000-8000-000000000001/onboarding/restart',
-      { headers: { 'x-csrf-token': csrf }, data: { version: state.version } },
-    );
+    await page.request.post(`${apiBase}/v1/organizations/${organizationId}/onboarding/restart`, {
+      headers: { 'x-csrf-token': csrf },
+      data: { version: state.version },
+    });
     await page.goto('http://localhost:3000');
   });
   test.afterAll(async () => browser.close());
@@ -42,11 +49,9 @@ test.describe.serial('Unified Product Experience 40/40', () => {
   });
   test('03 logo puede cargarse', async () => {
     await page.locator('input[type=file]').setInputFiles({
-      name: 'logo.svg',
-      mimeType: 'image/svg+xml',
-      buffer: Buffer.from(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#6c55b6"/></svg>',
-      ),
+      name: 'logo.png',
+      mimeType: 'image/png',
+      buffer: onePixelPng,
     });
     await expect(page.getByAltText('Vista previa')).toBeVisible();
     await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
@@ -70,10 +75,12 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
     const country = await chooseNexoSelect(page, 'País', /Estados Unidos/);
     await expect(country).toHaveAttribute('data-value', 'US');
+    await chooseNexoSelect(page, 'País', /México/);
   });
   test('10 moneda editable', async () => {
-    const currency = await chooseNexoSelect(page, 'Moneda', /Dólar/);
+    const currency = await chooseNexoSelect(page, 'Moneda', /^USD — Dólar$/);
     await expect(currency).toHaveAttribute('data-value', 'USD');
+    await chooseNexoSelect(page, 'Moneda', /^MXN — Peso mexicano$/);
   });
   test('11 idioma editable', async () => {
     const language = await chooseNexoSelect(page, 'Idioma', /English/);
@@ -82,6 +89,7 @@ test.describe.serial('Unified Product Experience 40/40', () => {
   test('12 zona horaria editable', async () => {
     const zone = await chooseNexoSelect(page, 'Zona horaria', /Tijuana/);
     await expect(zone).toHaveAttribute('data-value', 'America/Tijuana');
+    await chooseNexoSelect(page, 'Zona horaria', /Mazatlán/);
     await chooseNexoSelect(page, 'Idioma', /Español/);
     await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
   });
@@ -92,11 +100,20 @@ test.describe.serial('Unified Product Experience 40/40', () => {
   });
   test('14 horarios editables', async () => {
     const monday = page.locator('.nexo-schedule__day').filter({ hasText: 'Lunes' });
-    if (!(await monday.getByLabel('Abre').isVisible()))
+    if (
+      (await monday
+        .getByRole('button', { name: /Editar Lunes|Contraer Lunes/ })
+        .getAttribute('aria-expanded')) !== 'true'
+    )
       await monday.getByRole('button', { name: /Editar Lunes/ }).click();
-    await monday.getByLabel('Abre').fill('08:30');
-    await monday.getByLabel('Cierra').fill('19:30');
-    await expect(monday.getByLabel('Abre')).toHaveValue('08:30');
+    await chooseNexoSelect(page, 'Abre: hora', '08');
+    await chooseNexoSelect(page, 'Abre: minutos', '30');
+    await chooseNexoSelect(page, 'Cierra: hora', '19');
+    await chooseNexoSelect(page, 'Cierra: minutos', '30');
+    await expect(monday.getByRole('combobox', { name: 'Abre: hora' })).toHaveAttribute(
+      'data-value',
+      '08',
+    );
   });
   test('15 copiar horarios', async () => {
     await page.locator('.nexo-schedule__toolbar button').click();
@@ -106,20 +123,22 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
   });
   test('16 caja editable', async () => {
-    await page.getByLabel('Nombre del punto de cobro').fill('Caja terraza');
+    await chooseCustomNexoSelect(page, 'Nombre del punto de cobro', 'Caja terraza');
     await page.getByLabel('Fondo inicial sugerido').fill('1500');
     await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
   });
   test('17 catálogo editable', async () => {
     await page.getByRole('radio', { name: /Catálogo vacío/ }).click();
     await expect(page.getByRole('heading', { name: 'Crea tu primer producto' })).toBeVisible();
-    await page.getByLabel('Nombre', { exact: true }).fill('Tisana Horizonte');
-    await page.getByLabel(/Precio sugerido/).fill('64');
-    await page
+    const productForm = page.locator('.onboarding-product-builder');
+    await productForm.getByLabel(/^Nombre/).fill('Tisana Horizonte');
+    await chooseCustomNexoSelect(page, 'Categoría', 'Infusiones');
+    await productForm.getByLabel(/Precio sugerido/).fill('64');
+    await productForm
       .getByRole('button', { name: /Usar icono/ })
       .nth(3)
       .click();
-    await expect(page.getByLabel('Nombre', { exact: true })).toHaveValue('Tisana Horizonte');
+    await expect(productForm.getByLabel(/^Nombre/)).toHaveValue('Tisana Horizonte');
     await page.getByRole('radio', { name: /Explorar sugerencias/ }).click();
     await page.getByRole('button', { name: /Espresso/ }).click();
     await expect(page.getByText('2 seleccionados')).toBeVisible();
@@ -148,10 +167,12 @@ test.describe.serial('Unified Product Experience 40/40', () => {
   });
   test('22 finalización autoritativa', async () => {
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-    await expect(page.getByRole('heading', { name: /Héctor/ })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /Abrir menú de usuario de Owner Nuevo/ }),
+    ).toBeVisible();
   });
   test('23 menú tiene perfil y logout', async () => {
-    await page.getByRole('button', { name: /Héctor/ }).click();
+    await page.getByRole('button', { name: /Abrir menú de usuario de Owner Nuevo/ }).click();
     await expect(page.getByRole('menuitem', { name: 'Perfil' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cerrar sesión' }).last()).toBeVisible();
     await page.keyboard.press('Escape');
@@ -193,9 +214,11 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await expect(page).toHaveURL(/#approvals/);
   });
   test('35 volver arriba', async () => {
-    await page.evaluate(() => scrollTo(0, 1000));
+    await page.goto('http://localhost:3000/cash');
+    await page.getByRole('button', { name: 'Aprobaciones' }).click();
     await expect(page.getByRole('button', { name: /Volver arriba/ })).toBeVisible();
     await page.getByRole('button', { name: /Volver arriba/ }).click();
+    await expect(page).toHaveURL(/#overview/);
   });
   test('36 sin enums ingleses conocidos', async () => {
     const body = await page.locator('body').innerText();
@@ -212,9 +235,12 @@ test.describe.serial('Unified Product Experience 40/40', () => {
   test('39 perfil conectado', async () => {
     await page.goto('http://localhost:3000/settings/profile');
     await expect(page.getByRole('heading', { name: 'Perfil y preferencias' })).toBeVisible();
-    await page.getByLabel('Nombre visible').fill('Héctor Cejudo');
+    await page.getByLabel('Nombre visible').fill('Unified Owner');
     await page.getByRole('button', { name: 'Guardar perfil' }).click();
-    await expect(page.getByText(/Perfil guardado\. Verás los cambios/)).toBeVisible({
+    await expect(page.getByText(/Perfil actualizado\. Tu nombre y tu foto/)).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Abrir menú de usuario de Unified Owner' }),
+    ).toBeVisible({
       timeout: 15_000,
     });
   });
@@ -229,13 +255,13 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
   test('42 menú cierra con Escape y restaura foco', async () => {
-    const trigger = page.getByRole('button', { name: /Héctor/ });
+    const trigger = page.getByRole('button', { name: 'Abrir menú de usuario de Unified Owner' });
     await trigger.click();
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
   });
   test('43 menú cierra con clic exterior', async () => {
-    await page.getByRole('button', { name: /Héctor/ }).click();
+    await page.getByRole('button', { name: 'Abrir menú de usuario de Unified Owner' }).click();
     await page.mouse.click(12, Math.min(420, page.viewportSize()?.height ?? 420));
     await expect(page.locator('.unified-account-menu')).toHaveCount(0);
   });
@@ -287,7 +313,7 @@ test.describe.serial('Unified Product Experience 40/40', () => {
       ),
     });
     await page.getByRole('button', { name: 'Guardar perfil' }).click();
-    await expect(page.getByText(/Perfil guardado\. Verás los cambios/)).toBeVisible({
+    await expect(page.getByText(/Perfil actualizado\. Tu nombre y tu foto/)).toBeVisible({
       timeout: 15_000,
     });
     const identity = await page.request.get(`${apiBase}/v1/identity`);
@@ -306,7 +332,7 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await page.getByLabel('Nombre del producto').fill(`Producto estable ${suffix}`);
     await page.getByLabel('SKU comercial (opcional)').fill(`EST-${suffix}`);
     await page.getByLabel('Descripción (opcional)').fill('Producto de certificación local.');
-    await page.getByLabel('Categoría').fill('Pruebas de estabilidad');
+    await chooseCustomNexoSelect(page, 'Categoría', 'Pruebas de estabilidad');
     await page.getByLabel('Precio en MXN').fill('45.00');
     await page.getByLabel('Código de barras').fill(`750${suffix.slice(-10)}`);
     await page.getByRole('button', { name: /Alimento/ }).focus();
@@ -348,6 +374,8 @@ test.describe.serial('Unified Product Experience 40/40', () => {
     await page.locator('.profile-trigger').click();
     await page.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
     await expect(page.getByRole('heading', { name: 'Bienvenido de nuevo' })).toBeVisible();
+    await page.getByLabel('Correo electrónico').fill(fixtureEmail);
+    await page.getByRole('textbox', { name: 'Contraseña *' }).fill(password);
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
     await expect(page.locator('.profile-trigger .avatar img')).toBeVisible();
   });

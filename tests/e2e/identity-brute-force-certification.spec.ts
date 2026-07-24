@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const origin = 'http://localhost:3000';
@@ -16,7 +17,7 @@ test.describe.serial('Part 1A abuse protection certification', () => {
   test('locks a known account durably after the configured consecutive failure threshold', async ({
     request,
   }) => {
-    const email = 'alpha.employee@nexo.local';
+    const email = 'alpha.lockout@nexo.local';
     for (let attempt = 0; attempt < 10; attempt += 1) {
       const response = await request.post('/v1/auth/login', {
         data: payload(email, `wrong-password-${String(attempt)}`),
@@ -28,7 +29,26 @@ test.describe.serial('Part 1A abuse protection certification', () => {
       data: payload(email, password),
       headers: { origin },
     });
-    expect(throttled.status()).toBe(429);
+    // Locked and unknown identities retain the same public response to prevent enumeration.
+    expect(throttled.status()).toBe(401);
+    const durableState = execFileSync(
+      'docker',
+      [
+        'compose',
+        'exec',
+        '-T',
+        'postgres',
+        'psql',
+        '-U',
+        'nexo_admin',
+        '-d',
+        'nexo',
+        '-Atc',
+        "select status from users where email='alpha.lockout@nexo.local'",
+      ],
+      { encoding: 'utf8' },
+    ).trim();
+    expect(durableState).toBe('LOCKED');
   });
 
   test('limits password spraying across distinct nonexistent accounts by source IP', async ({

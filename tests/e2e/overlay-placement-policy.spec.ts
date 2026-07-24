@@ -8,6 +8,6 @@ test('política central define una única zona superior derecha', async () => {
   ]);
   expect(ui).toContain("root.id = 'nexo-toast-provider'");
   expect(ui).not.toContain('nexo-toast-region--onboarding');
-  expect(styles).toContain('inset: max(1rem, env(safe-area-inset-top))');
+  expect(styles).toContain('max(var(--nexo-toast-safe-top, 0px), env(safe-area-inset-top))');
   expect(styles).not.toContain('.nexo-toast-region--onboarding');
 });

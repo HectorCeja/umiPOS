@@ -10,6 +10,8 @@ RUN pnpm --filter @nexo/worker... build
 RUN pnpm deploy --filter @nexo/worker --prod /out
 
 FROM node:24.18.0-alpine AS runtime
+ARG NEXO_SOURCE_FINGERPRINT=unversioned
+LABEL org.nexo.source-fingerprint="${NEXO_SOURCE_FINGERPRINT}"
 ENV NODE_ENV=production
 WORKDIR /app
 RUN addgroup -S nexo && adduser -S -G nexo nexo

@@ -9,6 +9,8 @@ test('la ayuda pública de Login nunca enlaza al Centro autenticado', async ({ p
   await page.getByRole('button', { name: 'Ver guía' }).click();
   const help = page.getByLabel('Ayuda de Cómo iniciar sesión');
   await expect(help.getByRole('link')).toHaveCount(0);
-  await expect(help.getByRole('button')).toHaveCount(1);
+  await expect(
+    help.getByRole('button', { name: 'Cerrar ayuda de Cómo iniciar sesión' }),
+  ).toHaveCount(1);
   expectClean(audit);
 });

@@ -16,13 +16,45 @@ export function createCleanBusiness() {
   return { email, organization, organizationId };
 }
 
-export async function loginClean(page: Page, email: string) {
-  await page.goto(web);
+export function createCleanUser(
+  role: 'OWNER' | 'ADMINISTRATOR' | 'SUPERVISOR' | 'CASHIER' | 'READ_ONLY' = 'OWNER',
+  organizationId = '10000000-0000-4000-8000-000000000001',
+) {
+  const output = execFileSync(
+    'node',
+    ['scripts/owner-onboarding.mjs', 'new-user', role, organizationId],
+    { encoding: 'utf8' },
+  );
+  const email = /Usuario: (.+)/.exec(output)?.[1];
+  if (!email) throw new Error('No se creó el usuario limpio');
+  return { email };
+}
+
+export async function loginClean(
+  page: Page,
+  email: string,
+  activeContext?: { organizationId: string; branchId: string },
+) {
+  await page.context().clearCookies();
+  const response = await page.request.post(`${api}/v1/auth/login`, {
+    headers: { origin: web },
+    data: {
+      email,
+      password,
+      deviceFingerprint: `e2e-fixture-${Date.now()}`,
+      deviceName: 'E2E fixture',
+    },
+  });
+  expect(response.ok()).toBe(true);
+  await page.goto(`${web}/login`);
   await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await page.getByLabel('Correo').fill(email);
-  await page.getByRole('textbox', { name: 'Contraseña *' }).fill(password);
-  await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
+  if (activeContext) {
+    await page.evaluate(({ organizationId, branchId }) => {
+      localStorage.setItem('nexo.active-organization', organizationId);
+      localStorage.setItem('nexo.active-branch', branchId);
+    }, activeContext);
+  }
+  await page.goto(web);
   await page.locator('.guided-onboarding, .product-main').first().waitFor();
 }
 
@@ -48,7 +80,17 @@ export async function completeCleanOnboarding(
         currentStep: 4,
         businessType: 'COFFEE_SHOP',
         templateKey: 'coffee-shop',
-        answers: { businessType: 'COFFEE_SHOP' },
+        answers: {
+          businessType: 'COFFEE_SHOP',
+          businessName: 'Negocio E2E aislado',
+          country: 'MX',
+          currency: 'MXN',
+          locale: 'es-MX',
+          timeZone: 'America/Mazatlan',
+          branchName: 'Sucursal principal',
+          catalogChoice: 'template',
+          journeyStep: 10,
+        },
       },
     },
   );

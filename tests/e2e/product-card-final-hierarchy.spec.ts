@@ -34,7 +34,12 @@ test('fotografía domina y tipo queda como metadato glass', async ({ page }) => 
 test('sin fotografía conserva placeholder editorial con icono protagonista', async ({ page }) => {
   await login(page);
   await page.goto(`${web}/products`);
-  const card = page.locator('.product-catalog-card[data-has-image=false]').first();
+  const name = `Placeholder editorial ${Date.now()}`;
+  await page.getByLabel('Nombre del producto').fill(name);
+  await page.getByRole('button', { name: 'Agregar al catálogo' }).click();
+  const card = page
+    .locator('.product-catalog-card[data-has-image=false]')
+    .filter({ hasText: name });
   await expect(card).toBeVisible();
   await expect(card.locator('.nexo-product-card__fallback')).toBeVisible();
   await expect(card.locator('.nexo-product-card__type')).toHaveCount(0);

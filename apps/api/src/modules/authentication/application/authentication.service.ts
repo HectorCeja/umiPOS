@@ -480,10 +480,14 @@ export class AuthenticationService {
 
   private async enforceLoginRateLimit(email: string, ip: string): Promise<void> {
     const [ipAllowed, accountAllowed] = await Promise.all([
-      this.abuseProtection.consume(this.rateKey('login-ip', ip), 30, 60),
+      this.abuseProtection.consume(
+        this.rateKey('login-ip', ip),
+        this.configuration.loginIpRateLimit,
+        60,
+      ),
       this.abuseProtection.consume(
         this.rateKey('login-account', email),
-        this.configuration.maxLoginAttempts,
+        this.configuration.loginAccountRateLimit,
         this.configuration.lockTtlSeconds,
       ),
     ]);

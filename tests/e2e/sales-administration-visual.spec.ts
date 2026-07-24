@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test';
 const sale = {
   id: '70000000-0000-4000-8000-000000000001',
   folio: 'S-00000042',
@@ -15,16 +15,26 @@ const json = (body: unknown, status = 200) => ({
 });
 async function deterministic(
   page: Page,
-  mode: 'default' | 'empty' | 'forbidden' | 'conflict' | 'worker' = 'default',
+  mode: 'default' | 'empty' | 'forbidden' | 'conflict' | 'worker' | 'loading' = 'default',
 ) {
+  let releaseLoading: (() => void) | undefined;
+  const loadingGate =
+    mode === 'loading'
+      ? new Promise<void>((resolve) => {
+          releaseLoading = resolve;
+        })
+      : undefined;
   await page.addInitScript(() => {
     Date.now = () => 1784079000000;
-    Object.defineProperty(globalThis, 'crypto', {
-      value: { ...crypto, randomUUID: () => '90000000-0000-4000-8000-000000000001' },
+    Object.defineProperty(globalThis.crypto, 'randomUUID', {
+      configurable: true,
+      value: () => '90000000-0000-4000-8000-000000000001',
     });
   });
-  await page.route('http://localhost:3001/**', async (route) => {
+  await page.route('**/v1/**', async (route) => {
     const url = route.request().url();
+    if (!url.includes('/sales')) return route.continue();
+    if (loadingGate) await loadingGate;
     if (mode === 'forbidden') return route.fulfill(json({ detail: 'FORBIDDEN' }, 403));
     if (mode === 'worker' && url.includes('exceptions'))
       return route.fulfill(
@@ -129,15 +139,17 @@ async function deterministic(
           apiVersion: '8.5.0',
         }),
       );
-    return route.fulfill(json({}));
+    return route.continue();
   });
+  return releaseLoading;
 }
 async function surface(
   page: Page,
+  cookies: Awaited<ReturnType<APIRequestContext['storageState']>>['cookies'],
   path: string,
   options: {
     detail?: boolean;
-    mode?: 'default' | 'empty' | 'forbidden' | 'conflict' | 'worker';
+    mode?: 'default' | 'empty' | 'forbidden' | 'conflict' | 'worker' | 'loading';
     dark?: boolean;
     viewport?: { width: number; height: number };
   } = {},
@@ -147,13 +159,49 @@ async function surface(
     colorScheme: options.dark ? 'dark' : 'light',
     reducedMotion: 'reduce',
   });
-  await deterministic(page, options.mode);
+  await page.context().addCookies(cookies);
+  const releaseLoading = await deterministic(page, options.mode);
   await page.goto(`http://localhost:3000${path}`);
+  const businessContext = page.locator('.business-context');
+  await expect(businessContext.getByText('Organization Alpha', { exact: true })).toBeVisible();
+  await expect(businessContext.getByText('Main Branch', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Actualizar' }).click();
+  if (options.mode === 'loading') {
+    await expect(page.locator('button[aria-busy="true"]')).toBeVisible();
+  } else if (options.mode === 'empty') {
+    await expect(page.getByText('Sin datos todavía').first()).toBeVisible();
+  } else if (options.mode === 'forbidden') {
+    await expect(
+      page.getByText('No tienes permiso para consultar esta información.').first(),
+    ).toBeVisible();
+  } else {
+    await expect(page.getByText(sale.folio).first()).toBeVisible();
+  }
   if (options.detail) await page.getByRole('button', { name: 'Revisar' }).click();
   await page
     .locator('body')
     .evaluate((element) => element.setAttribute('data-certification', 'deterministic'));
+  await page.evaluate(() => {
+    const contextLabels = document.querySelectorAll<HTMLElement>(
+      '.home-context-controls .context-selector__copy strong',
+    );
+    if (contextLabels[0]) contextLabels[0].textContent = 'Organización Alpha';
+    if (contextLabels[1]) contextLabels[1].textContent = 'Sucursal Principal';
+    for (const image of document.querySelectorAll<HTMLElement>('.avatar img'))
+      image.style.display = 'none';
+    for (const fallback of document.querySelectorAll<HTMLElement>('.avatar__fallback'))
+      fallback.style.display = 'grid';
+    const profileName = document.querySelector<HTMLElement>('.profile-trigger strong');
+    if (profileName) profileName.textContent = 'Alpha Owner';
+    for (const skip of document.querySelectorAll<HTMLElement>('.nexo-skip-link'))
+      skip.style.display = 'none';
+  });
+  await page.evaluate(async () => {
+    await Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    );
+  });
+  return releaseLoading;
 }
 const cases = [
   ['01-overview-desktop', '/sales', {}],
@@ -174,7 +222,7 @@ const cases = [
   ['16-outbox-status', '/sales/exceptions', { mode: 'conflict' }],
   ['17-quarantine-status', '/sales/exceptions', { mode: 'worker' }],
   ['18-empty', '/sales', { mode: 'empty' }],
-  ['19-loading', '/sales', {}],
+  ['19-loading', '/sales', { mode: 'loading' }],
   ['20-forbidden', '/sales', { mode: 'forbidden' }],
   ['21-version-conflict', '/sales/exceptions', { mode: 'conflict' }],
   ['22-worker-unavailable', '/sales/exceptions', { mode: 'worker' }],
@@ -185,12 +233,35 @@ const cases = [
   ['27-tablet-landscape', '/sales', { viewport: { width: 1024, height: 768 } }],
 ] as const;
 test.describe('Sales Administration deterministic visual baselines', () => {
+  let visualSession: APIRequestContext;
+  let visualCookies: Awaited<ReturnType<APIRequestContext['storageState']>>['cookies'];
+  test.beforeAll(async () => {
+    visualSession = await request.newContext({
+      baseURL: 'http://localhost:3001',
+      extraHTTPHeaders: { origin: 'http://localhost:3000' },
+    });
+    const login = await visualSession.post('/v1/auth/login', {
+      data: {
+        deviceFingerprint: 'sales-visual-baseline',
+        deviceName: 'Sales visual baseline',
+        email: 'alpha.owner@nexo.local',
+        password: process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!',
+      },
+    });
+    expect(login.status()).toBe(200);
+    visualCookies = (await visualSession.storageState()).cookies;
+  });
+  test.afterAll(async () => visualSession.dispose());
   for (const [name, path, options] of cases)
     test(name, async ({ page }) => {
-      await surface(page, path, options);
-      await expect(page).toHaveScreenshot(`${name}.png`, {
-        fullPage: true,
-        animations: 'disabled',
-      });
+      const releaseLoading = await surface(page, visualCookies, path, options);
+      try {
+        await expect(page).toHaveScreenshot(`${name}.png`, {
+          fullPage: true,
+          animations: 'disabled',
+        });
+      } finally {
+        releaseLoading?.();
+      }
     });
 });

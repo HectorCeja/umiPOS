@@ -2,8 +2,7 @@ import { expect, test } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 
-const OWNER_PRODUCT_ID = '7c000000-0000-4000-8000-000000000001';
-const OWNER_VARIANT_ID = '7c000000-0000-4000-8000-000000000002';
+const OWNER_ORGANIZATION_ID = '10000000-0000-4000-8000-000000000001';
 test('seed elimina dependencias QA antes del producto y no limpia tenants owner', async () => {
   const source = await readFile('packages/database/prisma/seed.ts', 'utf8');
   const qa = source.indexOf(
@@ -38,14 +37,14 @@ test('PostgreSQL revierte completamente una preparación fallida simulada', asyn
     {
       encoding: 'utf8',
       input: `BEGIN;
-UPDATE products SET name = 'NO DEBE PERSISTIR' WHERE id = '${OWNER_PRODUCT_ID}';
-UPDATE product_variants SET product_id = gen_random_uuid() WHERE id = '${OWNER_VARIANT_ID}';
+UPDATE organizations SET name = 'NO DEBE PERSISTIR' WHERE id = '${OWNER_ORGANIZATION_ID}';
+SELECT 1 / 0;
 COMMIT;`,
     },
   );
 
   expect(failedTransaction.status).not.toBe(0);
-  expect(failedTransaction.stderr).toContain('product_variants_tenant_id_product_id_fkey');
+  expect(failedTransaction.stderr).toContain('division by zero');
 
   const verification = spawnSync(
     'docker',
@@ -60,11 +59,11 @@ COMMIT;`,
       '-d',
       'nexo',
       '-Atc',
-      `SELECT name FROM products WHERE id = '${OWNER_PRODUCT_ID}';`,
+      `SELECT name FROM organizations WHERE id = '${OWNER_ORGANIZATION_ID}';`,
     ],
     { encoding: 'utf8' },
   );
 
   expect(verification.status).toBe(0);
-  expect(verification.stdout.trim()).toBe('Producto persistente owner');
+  expect(verification.stdout.trim()).toBe('Organization Alpha');
 });

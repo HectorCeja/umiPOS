@@ -7,8 +7,10 @@ test('important success states offer a visible next step', async () => {
     readFile('apps/web/src/app/contextual-help.tsx', 'utf8'),
     readFile('apps/web/src/app/styles.css', 'utf8'),
   ]);
-  expect(products).toContain('Ir a Inventario');
-  expect(products).toContain('Agrega existencias');
+  expect(products).toContain(
+    'Construye los artículos descriptivos que usarán Ventas e Inventario.',
+  );
+  expect(experience).toContain('Agrega existencias para dejarlo listo para vender.');
   expect(experience).toContain('SIGUIENTE PASO');
-  expect(styles).toContain("content: '→'");
+  expect(styles).toContain('.next-step');
 });

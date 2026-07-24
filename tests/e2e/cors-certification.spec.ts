@@ -1,15 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
+import { localIpv4Address } from './network.helpers';
 
 test('CORS permite el origen LAN configurado y rechaza orígenes externos', async ({ request }) => {
-  const ip = execFileSync(
-    'bash',
-    [
-      '-lc',
-      'ip -4 route get 1.1.1.1 | awk \'{for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}\'',
-    ],
-    { encoding: 'utf8' },
-  ).trim();
+  const ip = localIpv4Address();
   const allowed = await request.fetch(`http://${ip}:3001/v1/organizations`, {
     method: 'OPTIONS',
     headers: { origin: `http://${ip}:3000`, 'access-control-request-method': 'GET' },

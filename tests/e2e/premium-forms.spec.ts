@@ -13,7 +13,8 @@ test('formularios críticos tienen ayudas, defaults y controles utilizables', as
   const audit = browserAudit(page);
   await page.goto(`${web}/cash`);
   await expect(page.getByRole('textbox', { name: 'Monto', exact: true })).toHaveValue('100.00');
-  await expect(page.getByRole('combobox', { name: 'Motivo' })).toHaveValue(
+  await expect(page.getByRole('combobox', { name: 'Motivo' })).toHaveAttribute(
+    'data-value',
     'Fondo adicional para cambio',
   );
   await expect(page.getByRole('textbox', { name: 'Monto', exact: true })).toHaveAttribute(

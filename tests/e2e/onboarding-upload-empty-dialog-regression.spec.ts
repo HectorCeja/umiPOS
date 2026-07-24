@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { onePixelPng, setOnboardingStep, web } from './owner-corrective.helpers';
+import {
+  loginIsolatedOnboarding,
+  onePixelPng,
+  setOnboardingStep,
+} from './owner-corrective.helpers';
 
 test('el diálogo real nunca queda vacío durante ni después del upload', async ({ page }) => {
-  execFileSync('pnpm', ['owner:alpha2:reset'], { stdio: 'pipe' });
-  await page.goto(`${web}/login`);
-  await page.getByLabel('Correo electrónico').fill('alpha2.owner@nexo.local');
-  await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
-  await page.locator('.guided-onboarding').waitFor();
+  await loginIsolatedOnboarding(page);
   await setOnboardingStep(page, 7);
   const builder = page.locator('.onboarding-product-builder');
   await builder.getByLabel('Nombre').fill('Latte persistente');

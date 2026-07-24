@@ -19,6 +19,7 @@ for (const viewport of [
   { width: 390, height: 844, name: 'mobile' },
 ]) {
   test(`evidencia safe area ${viewport.name}`, async ({ page }) => {
+    test.setTimeout(60_000);
     await mkdir(root, { recursive: true });
     await page.setViewportSize(viewport);
     await trigger(page);

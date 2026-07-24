@@ -2,10 +2,17 @@ import { expect, test, type Page } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { login, onePixelPng, setOnboardingStep, web } from './owner-corrective.helpers';
+import {
+  chooseCustomNexoSelect,
+  createProductForOwnerTest,
+  login,
+  onePixelPng,
+  setOnboardingStep,
+  web,
+} from './owner-corrective.helpers';
 
 const root = path.resolve('artifacts/owner-final-acceptance-master-part-2c/screenshots');
-test.use({ video: 'on' });
+test.use({ video: process.env.NEXO_E2E_ARTIFACT_MODE === 'evidence' ? 'on' : 'off' });
 async function shot(page: Page, name: string, fullPage = false) {
   await mkdir(root, { recursive: true });
   await page.screenshot({ path: path.join(root, name), fullPage, animations: 'disabled' });
@@ -29,7 +36,7 @@ test('video onboarding, validación, selects, iconos y upload estable', async ({
   await setOnboardingStep(page, 7);
   const builder = page.locator('.onboarding-product-builder');
   await builder.getByLabel('Nombre').fill('Latte del owner');
-  await builder.getByLabel('Categoría').fill('Bebidas');
+  await chooseCustomNexoSelect(page, 'Categoría', 'Bebidas');
   await builder.getByLabel('Precio sugerido (MXN)').fill('79');
   await builder.getByLabel('Descripción').fill('Espresso y leche');
   await builder.getByLabel('SKU (opcional)').fill('LAT-OWNER');
@@ -61,7 +68,7 @@ test('video toast viewport-fixed desktop y móvil', async ({ page }) => {
     await page.goto(`${web}/cash`);
     await page.getByText('Configurar puntos de cobro', { exact: true }).click();
     const suffix = `${width}-${Date.now()}`;
-    await page.getByLabel('Nombre', { exact: true }).fill(`Caja evidencia ${suffix}`);
+    await chooseCustomNexoSelect(page, 'Nombre', `Caja evidencia ${suffix}`);
     await page.getByLabel('Código', { exact: true }).fill(`EV-${suffix}`);
     await page.evaluate(() => {
       const elements = [
@@ -84,12 +91,8 @@ test('video toast viewport-fixed desktop y móvil', async ({ page }) => {
 });
 
 test('video selects transversales en editor e Inventario', async ({ page }) => {
-  await login(page);
-  await page.goto(`${web}/products`);
-  await page
-    .locator('.product-catalog-card')
-    .filter({ hasText: 'Producto persistente owner' })
-    .click();
+  const product = await createProductForOwnerTest(page, 'Producto de evidencia Part 2C');
+  await product.click();
   await page.getByRole('button', { name: 'Editar producto' }).click();
   await shot(page, '09-product-editor-select-single-chevron.png');
   await page.goto(`${web}/inventory`);

@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const tenant = '10000000-0000-4000-8000-000000000001';
@@ -8,6 +9,7 @@ const betaTenant = '10000000-0000-4000-8000-000000000002';
 const branch = '20000000-0000-4000-8000-000000000001';
 const otherBranch = '20000000-0000-4000-8000-000000000002';
 const endpoint = `/v1/organizations/${tenant}/analytics/overview`;
+const fixtureEmails = new Map<string, string>();
 
 type Analytics = {
   revenue: { grossMinor: string; refundedMinor: string; netMinor: string; collectedMinor: string };
@@ -20,6 +22,20 @@ type Analytics = {
 };
 
 async function login(email: string) {
+  if (!email.includes('supervisor')) {
+    const role = email.includes('cashier')
+      ? 'CASHIER'
+      : email.includes('readonly')
+        ? 'READ_ONLY'
+        : 'OWNER';
+    email =
+      fixtureEmails.get(role) ??
+      (() => {
+        const created = createCleanUser(role).email;
+        fixtureEmails.set(role, created);
+        return created;
+      })();
+  }
   const context = await request.newContext({
     baseURL: 'http://127.0.0.1:3001',
     extraHTTPHeaders: { origin: 'http://localhost:3000' },
@@ -206,10 +222,17 @@ test.describe.serial('Reports and Analytics certification', () => {
 });
 
 async function loginPage(page: Page) {
+  await page.addInitScript(
+    ({ organizationId, branchId }) => {
+      localStorage.setItem('nexo.active-organization', organizationId);
+      localStorage.setItem('nexo.active-branch', branchId);
+    },
+    { organizationId: tenant, branchId: branch },
+  );
   const response = await page.request.post('http://localhost:3001/v1/auth/login', {
     headers: { origin: 'http://localhost:3000' },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmails.get('OWNER') ?? createCleanUser('OWNER').email,
       password,
       deviceFingerprint: `analytics-web-${Date.now()}`,
       deviceName: 'Analytics web certification',

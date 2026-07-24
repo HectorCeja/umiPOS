@@ -1,5 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test';
+import {
+  createCompletedSaleForOwnerTest,
+  login as loginOwnerPage,
+} from './owner-corrective.helpers';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const tenant = '10000000-0000-4000-8000-000000000001',
@@ -12,7 +17,18 @@ let api: APIRequestContext,
   openSaleId = '',
   openVersion = 1;
 const admin = `/v1/organizations/${tenant}/sales-administration`;
+const fixtureEmails = new Map<string, string>();
 async function login(email = 'alpha.owner@nexo.local') {
+  const role = email.includes('cashier') ? 'CASHIER' : 'OWNER';
+  const fixtureTenant = email.includes('beta.') ? betaTenant : tenant;
+  const fixtureKey = `${role}:${fixtureTenant}`;
+  email =
+    fixtureEmails.get(fixtureKey) ??
+    (() => {
+      const created = createCleanUser(role, fixtureTenant).email;
+      fixtureEmails.set(fixtureKey, created);
+      return created;
+    })();
   const context = await request.newContext({
     baseURL: 'http://127.0.0.1:3001',
     extraHTTPHeaders: { origin: 'http://localhost:3000' },
@@ -42,7 +58,7 @@ async function ui(page: Page, path = '/sales') {
   const response = await page.request.post('http://localhost:3001/v1/auth/login', {
     headers: { origin: 'http://localhost:3000' },
     data: {
-      email: 'alpha.owner@nexo.local',
+      email: fixtureEmails.get(`OWNER:${tenant}`) ?? createCleanUser('OWNER', tenant).email,
       password,
       deviceFingerprint: `sales-browser-${Date.now()}`,
       deviceName: 'Sales browser certification',
@@ -53,16 +69,15 @@ async function ui(page: Page, path = '/sales') {
 }
 
 test.describe.serial('Sales Administration certification 44/44', () => {
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }) => {
     ({ context: api, csrf } = await login());
-    const history = await api.get(
-      `${admin}/history?branchId=${branch}&status=COMPLETED&pageSize=100`,
-    );
-    expect(history.status()).toBe(200);
-    const items = ((await history.json()) as { items: { id: string; folio?: string }[] }).items;
-    expect(items.length).toBeGreaterThan(0);
-    saleId = items[0]!.id;
-    folio = items[0]!.folio ?? saleId;
+    const fixturePage = await browser.newPage();
+    await loginOwnerPage(fixturePage);
+    saleId = await createCompletedSaleForOwnerTest(fixturePage);
+    await fixturePage.close();
+    const detail = await api.get(`${admin}/${saleId}/detail`);
+    expect(detail.status()).toBe(200);
+    folio = ((await detail.json()) as { sale: { folio?: string } }).sale.folio ?? saleId;
     const created = await api.post(`/v1/organizations/${tenant}/sales`, {
       headers: headers(`cert-open-${Date.now()}`),
       data: {

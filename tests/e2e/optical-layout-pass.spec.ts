@@ -48,6 +48,10 @@ test.describe.serial('final optical layout pass', () => {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     await login(context);
     const page = await context.newPage();
+    await page.addInitScript(() => {
+      localStorage.setItem('nexo.active-organization', '10000000-0000-4000-8000-000000000001');
+      localStorage.setItem('nexo.active-branch', '20000000-0000-4000-8000-000000000001');
+    });
     const routes = [
       ['home', '/'],
       ['products', '/products'],

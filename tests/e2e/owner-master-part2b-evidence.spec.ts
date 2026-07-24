@@ -2,7 +2,13 @@ import { expect, test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { login, onePixelPng, setOnboardingStep, web } from './owner-corrective.helpers';
+import {
+  chooseCustomNexoSelect,
+  login,
+  onePixelPng,
+  setOnboardingStep,
+  web,
+} from './owner-corrective.helpers';
 
 const root = path.resolve('artifacts/owner-final-acceptance-master-part-2b/screenshots');
 test.use({ video: 'on' });
@@ -23,7 +29,7 @@ test('evidencia onboarding con imagen y salida', async ({ page }) => {
   await form.getByLabel('Nombre').fill('Latte de evidencia');
   await form.getByLabel('Descripción').fill('Espresso y leche');
   await form.getByLabel('Precio').fill('78.50');
-  await form.getByLabel('Categoría').fill('Bebidas');
+  await chooseCustomNexoSelect(page, 'Categoría', 'Bebidas');
   await shot(page, '01-onboarding-before-upload.png');
   const uploading = form.locator('input[type=file]').setInputFiles({
     name: 'latte.png',
@@ -43,7 +49,7 @@ test('evidencia Caja toast y grid', async ({ page }) => {
   await page.goto(`${web}/cash`);
   await page.getByText('Configurar puntos de cobro', { exact: true }).click();
   const suffix = Date.now().toString();
-  await page.getByLabel('Nombre', { exact: true }).fill(`Caja Evidencia ${suffix}`);
+  await chooseCustomNexoSelect(page, 'Nombre', `Caja Evidencia ${suffix}`);
   await page.getByLabel('Código', { exact: true }).fill(`EVI-${suffix}`);
   await page.getByRole('button', { name: 'Crear punto de cobro' }).click();
   await expect(page.locator('.nexo-premium-toast')).toBeVisible();

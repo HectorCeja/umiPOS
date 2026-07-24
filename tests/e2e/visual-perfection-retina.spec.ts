@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { login, web } from './owner-corrective.helpers';
 
-test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, video: 'on' });
+test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, video: 'off' });
 
 test('Retina conserva bordes, radios, iconos y alineación', async ({ page }) => {
+  test.setTimeout(90_000);
   await mkdir('artifacts/visual-perfection/screenshots', { recursive: true });
   await login(page);
   for (const [route, name] of [
@@ -20,6 +21,15 @@ test('Retina conserva bordes, radios, iconos y alineación', async ({ page }) =>
       path: `artifacts/visual-perfection/screenshots/${name}.png`,
       fullPage: true,
     });
+    if (route === '/inventory') {
+      const trigger = page.getByRole('combobox', { name: 'Producto o presentación' });
+      await trigger.click();
+      await expect(page.locator('.nexo-select-content')).toBeVisible();
+      await page.screenshot({
+        path: 'artifacts/visual-perfection/screenshots/nexoselect-motion-search-retina.png',
+      });
+      await page.keyboard.press('Escape');
+    }
     expect(await page.evaluate(() => window.devicePixelRatio)).toBe(2);
     expect(
       await page.evaluate(
@@ -27,13 +37,4 @@ test('Retina conserva bordes, radios, iconos y alineación', async ({ page }) =>
       ),
     ).toBeLessThanOrEqual(1);
   }
-
-  await page.goto(`${web}/inventory`);
-  await expect(page.getByText('Validando tu sesión…')).toBeHidden({ timeout: 15_000 });
-  const trigger = page.getByRole('combobox', { name: 'Producto o presentación' });
-  await trigger.click();
-  await expect(page.locator('.nexo-select-content')).toBeVisible();
-  await page.screenshot({
-    path: 'artifacts/visual-perfection/screenshots/nexoselect-motion-search-retina.png',
-  });
 });

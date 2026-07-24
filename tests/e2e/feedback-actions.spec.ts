@@ -10,9 +10,14 @@ test('mutating owner forms expose explicit accessible feedback regions', async (
     await page.getByLabel('Apellidos').fill('Owner');
   }
   await page.getByRole('button', { name: 'Guardar perfil' }).click();
-  await expect(
-    page.getByText('Perfil actualizado. Tu nombre y tu foto ya te representan en todo NEXO.'),
-  ).toBeVisible();
+  const confirmation = page.getByText(
+    'Perfil actualizado. Tu nombre y tu foto ya te representan en todo NEXO.',
+  );
+  await expect(confirmation).toBeVisible();
+  const feedbackRegion = page.locator('body > .nexo-toast-region');
+  await expect(feedbackRegion).toHaveCount(1);
+  await expect(feedbackRegion).toContainText('Cambios guardados');
   await page.goto(`${web}/cash`);
-  await expect(page.locator('#cash-feedback')).toHaveCount(1);
+  await expect(page.locator('#cash-feedback')).toHaveCount(0);
+  await expect(page.locator('body > .nexo-toast-region')).toHaveCount(0);
 });

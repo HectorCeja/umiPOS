@@ -1,7 +1,10 @@
 import { chromium, expect, test } from '@playwright/test';
+import { createCleanUser } from './dynamic-context.helpers';
 
-const apiBase = process.env.PROFILE_MEDIA_API_URL ?? 'http://localhost:3002';
-const webBase = process.env.PROFILE_MEDIA_WEB_URL ?? 'http://localhost:3003';
+const webBase = process.env.PROFILE_MEDIA_WEB_URL ?? 'http://localhost:3000';
+const apiBase =
+  process.env.PROFILE_MEDIA_API_URL ??
+  `${new URL(webBase).protocol}//${new URL(webBase).hostname}:3001`;
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
@@ -9,6 +12,7 @@ const png = Buffer.from(
 );
 
 test('owner saves, reloads, and removes profile media through the real UI', async () => {
+  const fixture = createCleanUser();
   const browser = await chromium.launch();
   const context = await browser.newContext({
     recordVideo: {
@@ -21,7 +25,7 @@ test('owner saves, reloads, and removes profile media through the real UI', asyn
     data: {
       deviceFingerprint: 'profile-media-ui-real',
       deviceName: 'Profile media UI real',
-      email: 'alpha.owner@nexo.local',
+      email: fixture.email,
       password,
       rememberDevice: false,
       rememberMe: false,
@@ -53,7 +57,7 @@ test('owner saves, reloads, and removes profile media through the real UI', asyn
     path: 'artifacts/flutter-design-parity/part-4e/screenshots/avatar-preview.png',
   });
   await page.getByRole('button', { name: 'Guardar perfil' }).click();
-  await expect(page.getByText(/Perfil guardado\. Verás los cambios/)).toBeVisible({
+  await expect(page.getByText(/Perfil actualizado\. Tu nombre y tu foto/)).toBeVisible({
     timeout: 15_000,
   });
   await page.reload();

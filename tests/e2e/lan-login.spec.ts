@@ -1,19 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { completeCleanOnboarding, createCleanBusiness, password } from './dynamic-context.helpers';
+import { localIpv4Address } from './network.helpers';
 import { onePixelPng } from './owner-corrective.helpers';
 
 test('login y cookies funcionan usando la IP LAN', async ({ page }) => {
   test.setTimeout(120_000);
-  const ip = execFileSync(
-    'bash',
-    [
-      '-lc',
-      'ip -4 route get 1.1.1.1 | awk \'{for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}\'',
-    ],
-    { encoding: 'utf8' },
-  ).trim();
+  const ip = localIpv4Address();
   const web = `http://${ip}:3000`;
   const api = `http://${ip}:3001`;
   const business = createCleanBusiness();
@@ -59,8 +52,12 @@ test('login y cookies funcionan usando la IP LAN', async ({ page }) => {
     mimeType: 'image/png',
     buffer: onePixelPng,
   });
+  const profileSaved = page.waitForResponse(
+    (response) => response.url().endsWith('/v1/profile') && response.request().method() === 'PATCH',
+  );
   await page.getByRole('button', { name: 'Guardar perfil' }).click();
-  await expect(page.getByText(/Perfil actualizado/)).toBeVisible();
+  expect((await profileSaved).status()).toBe(200);
+  await expect(page.getByText(/Perfil actualizado/)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.profile-trigger .avatar img')).toBeVisible();
   await page.reload();
   await expect(page.locator('.profile-trigger .avatar img')).toBeVisible();

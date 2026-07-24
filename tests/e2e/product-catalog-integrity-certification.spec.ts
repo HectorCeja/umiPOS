@@ -1,11 +1,23 @@
 import { expect, request, test, type APIRequestContext } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
+import { createCleanUser } from './dynamic-context.helpers';
 
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const alphaId = '10000000-0000-4000-8000-000000000001';
 const betaId = '20000000-0000-4000-8000-000000000001';
+const fixtureEmails = new Map<string, string>();
+
+function ownedEmail(email: string) {
+  const role = email.includes('cashier') ? 'CASHIER' : 'OWNER';
+  const existing = fixtureEmails.get(role);
+  if (existing) return existing;
+  const created = createCleanUser(role).email;
+  fixtureEmails.set(role, created);
+  return created;
+}
 
 async function login(email: string) {
+  email = ownedEmail(email);
   const context = await request.newContext({
     baseURL: 'http://127.0.0.1:3001',
     extraHTTPHeaders: { origin: 'http://localhost:3000' },

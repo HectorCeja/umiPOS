@@ -2,10 +2,12 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createCleanBusiness } from './dynamic-context.helpers';
 
 const web = 'http://localhost:3000';
 const api = 'http://localhost:3001';
-const organizationId = '10000000-0000-4000-8000-000000000001';
+let organizationId: string;
+let fixtureEmail: string;
 const password = process.env.TEST_PERSONA_PASSWORD ?? 'Nexo Test Persona 2026!';
 const artifacts = path.resolve('artifacts/login-onboarding-cinematic');
 
@@ -19,7 +21,12 @@ async function capture(page: Page, name: string) {
 
 test.describe.serial('Login + Onboarding cinematic', () => {
   test.describe.configure({ timeout: 90_000 });
-  test.beforeAll(async () => mkdir(artifacts, { recursive: true }));
+  test.beforeAll(async () => {
+    await mkdir(artifacts, { recursive: true });
+    const fixture = createCleanBusiness();
+    organizationId = fixture.organizationId;
+    fixtureEmail = fixture.email;
+  });
 
   test('login real, error localizado, responsive, reduced motion y axe', async ({ browser }) => {
     for (const [name, viewport] of [
@@ -57,6 +64,7 @@ test.describe.serial('Login + Onboarding cinematic', () => {
     );
     expect(violations).toEqual([]);
     await page.locator('input[type="password"]').fill('incorrecta');
+    await page.getByLabel('Correo electrónico').fill(fixtureEmail);
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
     await expect(page.locator('.login-error')).toContainText('No pudimos iniciar sesión');
     await page.locator('input[type="password"]').fill(password);
@@ -87,7 +95,7 @@ test.describe.serial('Login + Onboarding cinematic', () => {
     const login = await page.request.post(`${api}/v1/auth/login`, {
       headers: { origin: web },
       data: {
-        email: 'alpha.owner@nexo.local',
+        email: fixtureEmail,
         password,
         deviceFingerprint: `cinematic-${Date.now()}`,
         deviceName: 'Cinematic certification',
@@ -125,11 +133,20 @@ test.describe.serial('Login + Onboarding cinematic', () => {
       await expect(page.locator('.guided-onboarding')).toHaveAttribute('data-step', String(step));
       const screenshot = captures.get(step);
       if (screenshot) await capture(page, screenshot);
+      if (step === 1) {
+        await page.getByLabel('Nombre comercial').fill('Negocio Cinematic');
+      }
+      if (step === 2) await page.getByRole('button', { name: /Cafetería/ }).click();
       if (step === 7) {
         await page.getByRole('radio', { name: /Catálogo vacío/ }).click();
-        await page.getByLabel('Nombre', { exact: true }).fill('Tisana Horizonte');
-        await page.getByLabel(/Precio sugerido/).fill('64');
-        await expect(page.getByRole('heading', { name: 'Crea tu primer producto' })).toBeVisible();
+        const productForm = page.locator('.onboarding-product-builder');
+        await productForm.getByLabel(/^Nombre/).fill('Tisana Horizonte');
+        await productForm.getByRole('combobox', { name: /Categoría/ }).click();
+        await page.getByRole('option', { name: 'Bebidas' }).click();
+        await productForm.getByLabel(/Precio sugerido/).fill('64');
+        await expect(
+          productForm.getByRole('heading', { name: 'Crea tu primer producto' }),
+        ).toBeVisible();
         await capture(page, 'onboarding-custom-product.png');
       }
     }
@@ -172,6 +189,10 @@ test.describe.serial('Login + Onboarding cinematic', () => {
     for (let step = 1; step <= 10; step += 1) {
       await page.getByRole('button', { name: /Empezar|Continuar/ }).click();
       await expect(page.locator('.guided-onboarding')).toHaveAttribute('data-step', String(step));
+      if (step === 1) {
+        await page.getByLabel('Nombre comercial').fill('Negocio Cinematic');
+      }
+      if (step === 2) await page.getByRole('button', { name: /Cafetería/ }).click();
     }
     await page.getByRole('button', { name: 'Entrar a NEXO' }).click();
     await expect(page.locator('.product-main')).toBeVisible();

@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   browserAudit,
   completeOnboarding,
-  login,
+  loginIsolatedOnboarding,
   setOnboardingStep,
   web,
 } from './owner-corrective.helpers.js';
@@ -27,6 +27,8 @@ async function freshGuide(page: import('@playwright/test').Page, route: string) 
   });
   await page.reload();
   await page.waitForLoadState('networkidle');
+  if (!(await page.locator('.contextual-help__panel').isVisible()))
+    await page.getByRole('button', { name: 'Ver guía' }).click();
   await expect(page.locator('.contextual-help__panel')).toBeVisible();
 }
 
@@ -37,7 +39,7 @@ test('premium experience teaches throughout the visible product', async ({ page 
   await page.goto(web);
   await expect(page.locator('.contextual-help__panel')).toBeVisible();
   await capture(page, 'login-contextual-help');
-  await login(page);
+  await loginIsolatedOnboarding(page);
   await setOnboardingStep(page, 4);
   await expect(page.locator('.contextual-help__panel')).toBeVisible();
   await capture(page, 'onboarding-contextual-help');

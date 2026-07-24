@@ -26,10 +26,13 @@ for (const viewport of [
         const box = node.getBoundingClientRect();
         return { x: box.x, y: box.y, width: box.width, height: box.height };
       });
-    const [header, toast] = await Promise.all([
-      rect(page.locator('[data-nexo-toast-safe-area]')),
-      rect(toastLocator),
-    ]);
+    const header = await rect(page.locator('[data-nexo-toast-safe-area]'));
+    await expect
+      .poll(async () => (await rect(toastLocator)).y, {
+        message: 'toast reaches its settled safe-area position',
+      })
+      .toBeGreaterThan(header.y + header.height);
+    const toast = await rect(toastLocator);
     expect(toast.y).toBeGreaterThan(header.y + header.height);
     expect(toast.x + toast.width).toBeLessThanOrEqual(viewport.width);
     expect(toast.y + toast.height).toBeLessThanOrEqual(viewport.height);
