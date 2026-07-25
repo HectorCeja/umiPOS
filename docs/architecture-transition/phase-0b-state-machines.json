@@ -1,0 +1,390 @@
+{
+  "manifestVersion": "1.0.0",
+  "stateMachines": [
+    {
+      "id": "SM-CHECKOUT",
+      "name": "Checkout and sale lifecycle",
+      "states": [
+        "DRAFT",
+        "OPEN",
+        "SUSPENDED",
+        "QUOTED",
+        "PAYMENT_PENDING",
+        "COMMITTED",
+        "CANCELLED",
+        "EXPIRED",
+        "FAILED"
+      ],
+      "allowedTransitions": [
+        "DRAFT->OPEN",
+        "OPEN->SUSPENDED",
+        "SUSPENDED->OPEN",
+        "OPEN->QUOTED",
+        "QUOTED->PAYMENT_PENDING",
+        "PAYMENT_PENDING->COMMITTED",
+        "OPEN->CANCELLED",
+        "SUSPENDED->CANCELLED",
+        "OPEN->EXPIRED",
+        "SUSPENDED->EXPIRED",
+        "QUOTED->OPEN",
+        "PAYMENT_PENDING->FAILED",
+        "FAILED->OPEN"
+      ],
+      "forbiddenTransitions": [
+        "COMMITTED->CANCELLED",
+        "COMMITTED->DRAFT",
+        "CANCELLED->OPEN",
+        "EXPIRED->COMMITTED"
+      ],
+      "rollbackBehavior": "Before commit, release owned reservations and reverse loyalty authorization; after commit use refunds or compensating facts.",
+      "recovery": "Query by clientCommandId, replay the same fingerprint, or resume an owned suspended checkout.",
+      "timeoutBehavior": "Reservation and suspension expiry append explicit expiration/release facts; provider ambiguity enters payment UNKNOWN.",
+      "invariantChecks": [
+        "authoritative quote",
+        "version match",
+        "device/operator/branch scope",
+        "idempotency",
+        "atomic commit",
+        "immutable snapshots"
+      ],
+      "futureUmiOwner": "apps/umi-api modules/pos"
+    },
+    {
+      "id": "SM-PAYMENT",
+      "name": "Payment intent lifecycle",
+      "states": [
+        "REQUESTED",
+        "PENDING_TERMINAL",
+        "AUTHORIZED",
+        "CAPTURED",
+        "DECLINED",
+        "UNKNOWN",
+        "VOIDED",
+        "PARTIALLY_REFUNDED",
+        "REFUNDED"
+      ],
+      "allowedTransitions": [
+        "REQUESTED->PENDING_TERMINAL",
+        "REQUESTED->CAPTURED",
+        "PENDING_TERMINAL->AUTHORIZED",
+        "PENDING_TERMINAL->DECLINED",
+        "PENDING_TERMINAL->UNKNOWN",
+        "AUTHORIZED->CAPTURED",
+        "AUTHORIZED->VOIDED",
+        "UNKNOWN->AUTHORIZED",
+        "UNKNOWN->CAPTURED",
+        "UNKNOWN->DECLINED",
+        "CAPTURED->PARTIALLY_REFUNDED",
+        "CAPTURED->REFUNDED",
+        "PARTIALLY_REFUNDED->PARTIALLY_REFUNDED",
+        "PARTIALLY_REFUNDED->REFUNDED"
+      ],
+      "forbiddenTransitions": [
+        "UNKNOWN->REQUESTED",
+        "DECLINED->CAPTURED without a new intent",
+        "REFUNDED->CAPTURED",
+        "CAPTURED->VOIDED"
+      ],
+      "rollbackBehavior": "Void an authorization when supported; captured value is corrected by refund facts, never deletion.",
+      "recovery": "Query the original provider intent and reconcile settlement/webhook evidence.",
+      "timeoutBehavior": "Provider timeout or response loss produces UNKNOWN, which is query-only.",
+      "invariantChecks": [
+        "unique provider reference",
+        "amount and currency",
+        "no network call under DB lock",
+        "idempotency",
+        "no card-sensitive storage"
+      ],
+      "futureUmiOwner": "apps/umi-api modules/payments"
+    },
+    {
+      "id": "SM-REFUND",
+      "name": "Refund lifecycle",
+      "states": [
+        "DRAFT",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "PROCESSING",
+        "OUTCOME_UNKNOWN",
+        "COMPLETED",
+        "REJECTED",
+        "FAILED"
+      ],
+      "allowedTransitions": [
+        "DRAFT->PENDING_APPROVAL",
+        "PENDING_APPROVAL->APPROVED",
+        "PENDING_APPROVAL->REJECTED",
+        "APPROVED->PROCESSING",
+        "PROCESSING->COMPLETED",
+        "PROCESSING->OUTCOME_UNKNOWN",
+        "PROCESSING->FAILED",
+        "OUTCOME_UNKNOWN->COMPLETED",
+        "OUTCOME_UNKNOWN->FAILED"
+      ],
+      "forbiddenTransitions": [
+        "DRAFT->COMPLETED",
+        "REJECTED->PROCESSING",
+        "COMPLETED->DRAFT",
+        "OUTCOME_UNKNOWN->PROCESSING as a new refund"
+      ],
+      "rollbackBehavior": "Failed preparation releases no value; completed refunds remain append-only and may only receive explicit compensating correction.",
+      "recovery": "Query the original refund/payment intent and reconcile cash, provider, inventory, and receipt projections.",
+      "timeoutBehavior": "Approval expiry returns to a new preparation requirement; provider ambiguity enters OUTCOME_UNKNOWN.",
+      "invariantChecks": [
+        "remaining refundable amount",
+        "line ownership",
+        "reason",
+        "fresh PIN",
+        "manager approval",
+        "idempotency",
+        "restock destination"
+      ],
+      "futureUmiOwner": "apps/umi-api modules/refunds"
+    },
+    {
+      "id": "SM-CASH-SHIFT",
+      "name": "Physical cash shift lifecycle",
+      "states": [
+        "PENDING_OPEN",
+        "OPEN",
+        "SUSPENDED",
+        "COUNTING",
+        "RECONCILIATION_REQUIRED",
+        "PENDING_APPROVAL",
+        "CLOSED",
+        "FORCE_CLOSED",
+        "REOPENED",
+        "CANCELLED"
+      ],
+      "allowedTransitions": [
+        "PENDING_OPEN->OPEN",
+        "PENDING_OPEN->CANCELLED",
+        "OPEN->SUSPENDED",
+        "SUSPENDED->OPEN",
+        "OPEN->COUNTING",
+        "REOPENED->COUNTING",
+        "COUNTING->RECONCILIATION_REQUIRED",
+        "RECONCILIATION_REQUIRED->PENDING_APPROVAL",
+        "RECONCILIATION_REQUIRED->CLOSED",
+        "PENDING_APPROVAL->CLOSED",
+        "OPEN->FORCE_CLOSED",
+        "SUSPENDED->FORCE_CLOSED",
+        "COUNTING->FORCE_CLOSED",
+        "CLOSED->REOPENED",
+        "FORCE_CLOSED->REOPENED"
+      ],
+      "forbiddenTransitions": [
+        "CLOSED->OPEN",
+        "COUNTING->OPEN without controlled recovery",
+        "OPEN->CLOSED without count/reconciliation",
+        "FORCE_CLOSED->CLOSED"
+      ],
+      "rollbackBehavior": "Opening failure is atomic; later correction appends movements and transitions rather than rewinding ledger history.",
+      "recovery": "Reopen with dedicated permission and approval, or force-close with snapshot, reason, alert, and audit.",
+      "timeoutBehavior": "Inactivity may suspend by policy; pending commands/events block close rather than timing into success.",
+      "invariantChecks": [
+        "online open",
+        "one device/register/operator binding",
+        "version",
+        "blind count",
+        "ledger fold",
+        "pending-sync zero",
+        "approval"
+      ],
+      "futureUmiOwner": "apps/umi-api modules/pos/cash"
+    },
+    {
+      "id": "SM-INVENTORY-RESERVATION",
+      "name": "Inventory reservation lifecycle",
+      "states": ["REQUESTED", "ACTIVE", "CONSUMED", "RELEASED", "EXPIRED", "REJECTED"],
+      "allowedTransitions": [
+        "REQUESTED->ACTIVE",
+        "REQUESTED->REJECTED",
+        "ACTIVE->CONSUMED",
+        "ACTIVE->RELEASED",
+        "ACTIVE->EXPIRED"
+      ],
+      "forbiddenTransitions": ["CONSUMED->ACTIVE", "RELEASED->CONSUMED", "EXPIRED->CONSUMED"],
+      "rollbackBehavior": "Checkout cancellation or failure appends release; consumption is corrected through inventory return/refund movements.",
+      "recovery": "Reconcile reservation by checkout command identity and alert on failed compensation.",
+      "timeoutBehavior": "TTL expiry appends release and makes a later stale consume conflict.",
+      "invariantChecks": [
+        "tenant and branch",
+        "variant/location ownership",
+        "availability or explicit policy",
+        "quantity",
+        "idempotency"
+      ],
+      "futureUmiOwner": "apps/umi-api modules/inventory"
+    },
+    {
+      "id": "SM-OFFLINE-COMMAND",
+      "name": "Offline command lifecycle",
+      "states": [
+        "CREATED",
+        "PERSISTED",
+        "READY",
+        "SENDING",
+        "ACKNOWLEDGED",
+        "APPLIED",
+        "CONFLICT",
+        "REJECTED",
+        "RECONCILIATION_REQUIRED"
+      ],
+      "allowedTransitions": [
+        "CREATED->PERSISTED",
+        "PERSISTED->READY",
+        "READY->SENDING",
+        "SENDING->ACKNOWLEDGED",
+        "SENDING->READY",
+        "ACKNOWLEDGED->APPLIED",
+        "ACKNOWLEDGED->CONFLICT",
+        "ACKNOWLEDGED->REJECTED",
+        "CONFLICT->RECONCILIATION_REQUIRED",
+        "REJECTED->RECONCILIATION_REQUIRED"
+      ],
+      "forbiddenTransitions": [
+        "CREATED->SENDING",
+        "PERSISTED->APPLIED",
+        "CONFLICT->APPLIED without explicit resolution",
+        "REJECTED->READY as silent retry"
+      ],
+      "rollbackBehavior": "Commands are never deleted to simulate rollback; explicit resolution or compensating online command is required.",
+      "recovery": "Query by clientCommandId, replay in device sequence, map provisional IDs, and surface conflicts.",
+      "timeoutBehavior": "Transport timeout returns to READY with the same command; snapshot expiry or policy rejection becomes explicit conflict/rejection.",
+      "invariantChecks": [
+        "encrypted persistence first",
+        "monotonic device sequence",
+        "fingerprint",
+        "signed snapshot",
+        "device trust",
+        "no silent repricing"
+      ],
+      "futureUmiOwner": "apps/umi-pos and apps/umi-api runtime"
+    },
+    {
+      "id": "SM-DEVICE",
+      "name": "Device enrollment and trust lifecycle",
+      "states": [
+        "UNENROLLED",
+        "CHALLENGE_ISSUED",
+        "ENROLLED",
+        "ACTIVE",
+        "ROTATION_PENDING",
+        "REPLACED",
+        "REVOKED",
+        "BLOCKED_VERSION"
+      ],
+      "allowedTransitions": [
+        "UNENROLLED->CHALLENGE_ISSUED",
+        "CHALLENGE_ISSUED->ENROLLED",
+        "ENROLLED->ACTIVE",
+        "ACTIVE->ROTATION_PENDING",
+        "ROTATION_PENDING->ACTIVE",
+        "ROTATION_PENDING->REVOKED",
+        "ACTIVE->REPLACED",
+        "ACTIVE->REVOKED",
+        "ACTIVE->BLOCKED_VERSION",
+        "BLOCKED_VERSION->ACTIVE"
+      ],
+      "forbiddenTransitions": [
+        "REVOKED->ACTIVE",
+        "REPLACED->ACTIVE",
+        "UNENROLLED->ACTIVE",
+        "CHALLENGE_ISSUED->ACTIVE"
+      ],
+      "rollbackBehavior": "Failed enrollment consumes no usable authority; retry returns the same enrollment result without redisclosing shared secrets.",
+      "recovery": "Issue a new bounded challenge, rotate to a new public key, or replace and revoke the old device through audited management.",
+      "timeoutBehavior": "Enrollment code expires after ten minutes; stale proofs, nonces, and unsupported versions fail closed.",
+      "invariantChecks": [
+        "non-exportable key",
+        "business/branch binding",
+        "signed proof",
+        "nonce freshness",
+        "minimum version",
+        "revocation"
+      ],
+      "futureUmiOwner": "apps/umi-api device trust and client secure storage"
+    },
+    {
+      "id": "SM-OPERATOR-SESSION",
+      "name": "Operator session lifecycle",
+      "states": [
+        "LOCKED",
+        "AUTHENTICATING",
+        "ACTIVE",
+        "REFRESHING",
+        "EXPIRED",
+        "REVOKED",
+        "SIGNED_OUT"
+      ],
+      "allowedTransitions": [
+        "LOCKED->AUTHENTICATING",
+        "AUTHENTICATING->ACTIVE",
+        "AUTHENTICATING->LOCKED",
+        "ACTIVE->REFRESHING",
+        "REFRESHING->ACTIVE",
+        "REFRESHING->EXPIRED",
+        "ACTIVE->EXPIRED",
+        "ACTIVE->REVOKED",
+        "ACTIVE->SIGNED_OUT",
+        "EXPIRED->AUTHENTICATING",
+        "SIGNED_OUT->AUTHENTICATING"
+      ],
+      "forbiddenTransitions": [
+        "REVOKED->ACTIVE",
+        "LOCKED->ACTIVE",
+        "EXPIRED->ACTIVE without authentication/valid refresh"
+      ],
+      "rollbackBehavior": "Failed authentication grants no session; revocation invalidates subsequent online commands.",
+      "recovery": "Fresh PIN on a trusted device; active-shift refresh additionally requires valid device proof.",
+      "timeoutBehavior": "Access token lasts 15 minutes; fresh-PIN evidence lasts five minutes; abuse controls may temporarily lock attempts.",
+      "invariantChecks": [
+        "Argon2id server verification",
+        "rate limit",
+        "device proof",
+        "current membership",
+        "branch",
+        "entitlement"
+      ],
+      "futureUmiOwner": "apps/umi-api identity and POS sessions"
+    },
+    {
+      "id": "SM-KDS",
+      "name": "Kitchen order lifecycle",
+      "states": [
+        "COMMITTED",
+        "ACCEPTED",
+        "PREPARING",
+        "READY",
+        "COMPLETED",
+        "REJECTED_PENDING_REMEDIATION"
+      ],
+      "allowedTransitions": [
+        "COMMITTED->ACCEPTED",
+        "ACCEPTED->PREPARING",
+        "PREPARING->READY",
+        "READY->COMPLETED",
+        "COMMITTED->REJECTED_PENDING_REMEDIATION",
+        "ACCEPTED->REJECTED_PENDING_REMEDIATION"
+      ],
+      "forbiddenTransitions": [
+        "DRAFT->ACCEPTED",
+        "COMPLETED->PREPARING",
+        "REJECTED_PENDING_REMEDIATION->COMPLETED without manager resolution"
+      ],
+      "rollbackBehavior": "Kitchen rejection does not alter payment, cash, loyalty, or inventory; it creates a remediation task.",
+      "recovery": "Replay actions with expected server version; stale transitions enter reconciliation; provisional IDs map by clientCommandId.",
+      "timeoutBehavior": "Missing ACK after bounded retry prints one fallback ticket and retains warning/reconciliation state.",
+      "invariantChecks": [
+        "committed order only",
+        "branch certificate",
+        "signed sequence",
+        "durable ACK",
+        "expected version",
+        "deduplication"
+      ],
+      "futureUmiOwner": "apps/umi-api KDS projection and apps/umi-kds"
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "manifestVersion": "1.0.0",
+  "note": "Stable business semantics proposed for the UMI contract; not framework exceptions and not preserved NEXO authority.",
+  "errors": [
+    {
+      "errorCode": "permission_denied",
+      "businessMeaning": "The current actor lacks the required effective permission or scope.",
+      "operatorMessage": "No tienes permiso para realizar esta acción.",
+      "recoveryGuidance": "Verify current role and branch; request an authorized operator.",
+      "auditRequirement": "Record actor, resource, permission, scope, and denial reason.",
+      "assistantExplanation": "Explain the required permission without revealing foreign resource existence."
+    },
+    {
+      "errorCode": "cross_tenant_access_denied",
+      "businessMeaning": "The resource is outside the active business.",
+      "operatorMessage": "No se pudo acceder al recurso solicitado.",
+      "recoveryGuidance": "Return to the authorized business context.",
+      "auditRequirement": "Security event with redacted foreign identifier.",
+      "assistantExplanation": "State that business isolation blocked access; never disclose the other tenant."
+    },
+    {
+      "errorCode": "cross_branch_access_denied",
+      "businessMeaning": "The actor or device is not scoped to the resource branch.",
+      "operatorMessage": "Esta operación no está disponible en la sucursal activa.",
+      "recoveryGuidance": "Use the assigned branch or request an authorized reassignment.",
+      "auditRequirement": "Record actor, device, active branch, and requested branch.",
+      "assistantExplanation": "Explain branch scope and safe reassignment path."
+    },
+    {
+      "errorCode": "entitlement_inactive",
+      "businessMeaning": "The business or branch lacks an active required capability.",
+      "operatorMessage": "Esta función no está activa para el negocio.",
+      "recoveryGuidance": "Ask an owner to review entitlements; do not retry as another endpoint.",
+      "auditRequirement": "Record capability and effective entitlement version.",
+      "assistantExplanation": "Explain the missing entitlement without offering a bypass."
+    },
+    {
+      "errorCode": "device_revoked",
+      "businessMeaning": "The enrolled device is no longer trusted.",
+      "operatorMessage": "Este dispositivo fue revocado. Contacta a un administrador.",
+      "recoveryGuidance": "Enroll a replacement through the audited device workflow.",
+      "auditRequirement": "High-signal security event with device and branch.",
+      "assistantExplanation": "Explain revocation and replacement; never restore trust directly."
+    },
+    {
+      "errorCode": "device_branch_mismatch",
+      "businessMeaning": "The device is bound to a different branch.",
+      "operatorMessage": "Este dispositivo no pertenece a la sucursal activa.",
+      "recoveryGuidance": "Use the bound branch or perform an authorized reassignment.",
+      "auditRequirement": "Record bound and attempted branch.",
+      "assistantExplanation": "Explain permanent branch binding and management workflow."
+    },
+    {
+      "errorCode": "device_proof_invalid",
+      "businessMeaning": "The signed request proof, timestamp, nonce, key, or body hash is invalid.",
+      "operatorMessage": "No se pudo verificar este dispositivo.",
+      "recoveryGuidance": "Check clock and connectivity; rotate/re-enroll only through management.",
+      "auditRequirement": "Security event without logging signature/private material.",
+      "assistantExplanation": "Offer clock/network diagnostics; never suggest bypassing proof."
+    },
+    {
+      "errorCode": "minimum_version_required",
+      "businessMeaning": "The client version is below policy.",
+      "operatorMessage": "Actualiza UmiPOS para continuar.",
+      "recoveryGuidance": "Install a certified signed release.",
+      "auditRequirement": "Record device, current version, and required version.",
+      "assistantExplanation": "Explain compatibility and safe update steps."
+    },
+    {
+      "errorCode": "operator_session_expired",
+      "businessMeaning": "The operator access session is no longer valid.",
+      "operatorMessage": "Tu sesión expiró. Ingresa tu PIN nuevamente.",
+      "recoveryGuidance": "Authenticate on the trusted device.",
+      "auditRequirement": "Record expiry/revocation category and device.",
+      "assistantExplanation": "Guide reauthentication without requesting or exposing the PIN."
+    },
+    {
+      "errorCode": "operator_locked",
+      "businessMeaning": "PIN abuse controls temporarily or durably block authentication.",
+      "operatorMessage": "La cuenta está bloqueada temporalmente.",
+      "recoveryGuidance": "Wait for temporary expiry or use the authorized recovery process.",
+      "auditRequirement": "Security event with rate-limit bucket metadata, no PIN.",
+      "assistantExplanation": "Explain lockout policy and recovery; do not reveal thresholds useful for abuse."
+    },
+    {
+      "errorCode": "fresh_pin_required",
+      "businessMeaning": "The action requires recent operator reauthentication.",
+      "operatorMessage": "Confirma tu PIN para continuar.",
+      "recoveryGuidance": "Complete the fresh-PIN ceremony on the trusted device.",
+      "auditRequirement": "Record action fingerprint and challenge outcome.",
+      "assistantExplanation": "Explain why fresh authentication is required; never collect the PIN."
+    },
+    {
+      "errorCode": "manager_approval_required",
+      "businessMeaning": "Policy requires an independent manager decision bound to this command.",
+      "operatorMessage": "Se requiere aprobación de un responsable.",
+      "recoveryGuidance": "Request one-use approval from an eligible manager.",
+      "auditRequirement": "Record requester, approver decision, fingerprint, reason, and expiry.",
+      "assistantExplanation": "Explain approval requirements; cannot approve or select a weaker path."
+    },
+    {
+      "errorCode": "idempotency_conflict",
+      "businessMeaning": "A command identity was reused with different input.",
+      "operatorMessage": "La operación ya existe con datos diferentes.",
+      "recoveryGuidance": "Query the original command; create a new identity only for a genuinely new action.",
+      "auditRequirement": "Record operation, key hash, old/new fingerprint, and actor.",
+      "assistantExplanation": "Explain safe replay versus a new intentional command."
+    },
+    {
+      "errorCode": "checkout_version_conflict",
+      "businessMeaning": "The checkout changed after the caller's version.",
+      "operatorMessage": "La venta cambió. Revisa los datos actualizados.",
+      "recoveryGuidance": "Reload authoritative state, review changes, and explicitly resubmit.",
+      "auditRequirement": "Record expected/actual version and command.",
+      "assistantExplanation": "Summarize the conflict without silently merging financial input."
+    },
+    {
+      "errorCode": "catalog_snapshot_stale",
+      "businessMeaning": "The pinned catalog/policy snapshot cannot authorize the requested operation.",
+      "operatorMessage": "El catálogo cambió. Actualiza antes de continuar.",
+      "recoveryGuidance": "Fetch a signed snapshot and re-quote; offline commands remain visible for resolution.",
+      "auditRequirement": "Record snapshot and current versions.",
+      "assistantExplanation": "Explain affected policy/price version; never silently reprice."
+    },
+    {
+      "errorCode": "currency_mismatch",
+      "businessMeaning": "Amounts or resources use incompatible currencies.",
+      "operatorMessage": "La moneda de la operación no coincide.",
+      "recoveryGuidance": "Return to correct branch/configuration and obtain a new quote.",
+      "auditRequirement": "Record expected and received currency.",
+      "assistantExplanation": "Explain mismatch without converting amounts automatically."
+    },
+    {
+      "errorCode": "insufficient_inventory",
+      "businessMeaning": "Available inventory cannot satisfy the operation under current policy.",
+      "operatorMessage": "No hay inventario suficiente para completar la operación.",
+      "recoveryGuidance": "Adjust quantity, choose another item/location, or use an explicitly authorized advisory override.",
+      "auditRequirement": "Record branch, variant, requested/available quantity, and policy.",
+      "assistantExplanation": "Explain stock components and permitted next steps."
+    },
+    {
+      "errorCode": "shift_not_open",
+      "businessMeaning": "The command requires an active owned cash shift.",
+      "operatorMessage": "Abre tu turno de caja para continuar.",
+      "recoveryGuidance": "Open online on the assigned device/register or switch to a permitted non-cash flow.",
+      "auditRequirement": "Record device, register, operator, and attempted operation.",
+      "assistantExplanation": "Guide normal opening; never attach to another operator's shift."
+    },
+    {
+      "errorCode": "shift_state_conflict",
+      "businessMeaning": "The shift state/version does not permit the command.",
+      "operatorMessage": "El turno cambió de estado. Actualiza y revisa antes de continuar.",
+      "recoveryGuidance": "Reload authoritative state; reconcile or obtain exceptional approval as required.",
+      "auditRequirement": "Record expected/actual state and version.",
+      "assistantExplanation": "Explain the blocking state and allowed transition."
+    },
+    {
+      "errorCode": "cash_mismatch",
+      "businessMeaning": "Counted cash differs from expected cash beyond automatic tolerance.",
+      "operatorMessage": "La caja presenta una diferencia que requiere revisión.",
+      "recoveryGuidance": "Review movements, recount if policy allows, add reason, and obtain approval.",
+      "auditRequirement": "Record count, expected, variance, policy, reason, and decision.",
+      "assistantExplanation": "Explain the ledger components after blind count; do not suggest fabrication."
+    },
+    {
+      "errorCode": "unsynchronized_commands_pending",
+      "businessMeaning": "The shift cannot close because owned commands are not authoritative yet.",
+      "operatorMessage": "Hay operaciones pendientes de sincronizar.",
+      "recoveryGuidance": "Restore connectivity, sync in order, resolve conflicts, then close.",
+      "auditRequirement": "Record pending command IDs/statuses redacted as appropriate.",
+      "assistantExplanation": "List safe diagnostic statuses; never discard commands."
+    },
+    {
+      "errorCode": "payment_outcome_unknown",
+      "businessMeaning": "The original payment may have succeeded but cannot yet be proved.",
+      "operatorMessage": "El resultado del pago aún no está confirmado.",
+      "recoveryGuidance": "Query and reconcile the original intent; do not charge again.",
+      "auditRequirement": "Record intent, attempt, provider correlation, and query history.",
+      "assistantExplanation": "Explicitly warn against creating a new charge."
+    },
+    {
+      "errorCode": "refund_exceeds_remaining",
+      "businessMeaning": "Requested refund exceeds remaining refundable value or quantity.",
+      "operatorMessage": "El reembolso supera el saldo disponible.",
+      "recoveryGuidance": "Reload refund history and reduce the request.",
+      "auditRequirement": "Record sale, prior refunds, requested remainder, and actor.",
+      "assistantExplanation": "Explain authoritative remaining value and prior compensations."
+    },
+    {
+      "errorCode": "receipt_access_denied",
+      "businessMeaning": "The requester does not own or operationally administer the receipt.",
+      "operatorMessage": "No se pudo encontrar el recibo solicitado.",
+      "recoveryGuidance": "Authenticate as the owning customer or authorized staff member.",
+      "auditRequirement": "Record access denial without revealing foreign receipt data.",
+      "assistantExplanation": "Protect receipt existence and ownership details."
+    },
+    {
+      "errorCode": "offline_command_rejected",
+      "businessMeaning": "The command is not allowed offline or failed snapshot/trust checks.",
+      "operatorMessage": "Esta operación requiere conexión y validación en línea.",
+      "recoveryGuidance": "Preserve the command evidence, reconnect, and follow the explicit resolution path.",
+      "auditRequirement": "Record capability, snapshot, sequence, device, and rejection reason.",
+      "assistantExplanation": "Explain the offline boundary; never suggest bypassing it."
+    },
+    {
+      "errorCode": "contract_version_unsupported",
+      "businessMeaning": "Client and server contract versions are incompatible.",
+      "operatorMessage": "Esta versión de UmiPOS ya no es compatible.",
+      "recoveryGuidance": "Install a certified compatible release; preserve unsynced data.",
+      "auditRequirement": "Record client/server versions and device.",
+      "assistantExplanation": "Guide safe update and recovery without discarding the journal."
+    },
+    {
+      "errorCode": "kds_transition_conflict",
+      "businessMeaning": "A kitchen action is stale or invalid for current order state.",
+      "operatorMessage": "El pedido cambió de estado. Actualiza la pantalla.",
+      "recoveryGuidance": "Reload authoritative state and create a remediation task when needed.",
+      "auditRequirement": "Record ticket, expected/actual version, action, and device.",
+      "assistantExplanation": "Explain allowed next kitchen states; do not alter financial state."
+    }
+  ]
+}
