@@ -1,0 +1,58 @@
+{
+  "manifestVersion": "1.0.0",
+  "canonicalGeneratedAt": "2026-07-25T00:28:26Z",
+  "sourceCommit": "6436918fd5e543b16b54850409c75aa99602324b",
+  "implementationPlan": {
+    "path": "/home/hceja/Downloads/UMIPOS_FUSION_IMPLEMENTATION_PLAN.md",
+    "sha256": "b39d41b09c3f5e8db3f9a6abbcded84693209aeaca97aac6d6dc28eb7f67ff61"
+  },
+  "phase0A": [
+    {
+      "path": "docs/architecture-transition/PHASE_0A_CROSS_REPOSITORY_MAP.md",
+      "sha256": "9136210d73a362ce685582817d4f4cdf44f8920d10f6e8022dc10f4a2147f29a"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_EXECUTIVE_SUMMARY.md",
+      "sha256": "1c117973d6a9b64d66e2d3c8b0515db1cb4a133146d220ede599a290e8fcc26f"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_FLUTTER_SALVAGE.md",
+      "sha256": "66c1cc4a4109aee015cf6b62dba50aa8b43ab2107a8de4498b094d467385d8ba"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_INVARIANT_CATALOG.md",
+      "sha256": "6a9b5f32de791dd6f6551b791537c0b45ac6d4a5903cedef1fa2469a59a39c8e"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_RETIREMENT_ORDER.md",
+      "sha256": "3f659b8c8e08f381372bf463a4cb930d1ee4ba2793ab704fc50c13393ac2fefd"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_SALVAGE_MATRIX.md",
+      "sha256": "5ee17f201cffbc75140b28b3ed6bba3cdc7fe6816aadc6d97b2b0c00d7e306ff"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_TEST_SALVAGE.md",
+      "sha256": "b9c85e870f095fad51ac1a308a41c16cae34eec1827fba64f541653617c68957"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0A_UMI_ASSISTANT_READINESS.md",
+      "sha256": "cae3f8ab1d448bd47fc9d3ffe68d33cde9f69a8f75c39795802ba1c575533353"
+    },
+    {
+      "path": "docs/architecture-transition/PHASE_0B_BACKLOG.md",
+      "sha256": "b3523a00a061fbb0cc6c4dd01069d19631336ae6a7cbf5225c63096d2dfeabd6"
+    },
+    {
+      "path": "docs/architecture-transition/phase-0a-cross-repository-map.json",
+      "sha256": "3f690e84abc09d50f64c4573601e6a8ae9cf379344c0928af2d3add43baba039"
+    },
+    {
+      "path": "docs/architecture-transition/phase-0a-salvage-manifest.json",
+      "sha256": "df81a725e78d7a0a4779bdac8a1d89aefc8f7915e8b0e1f57a88559cecd258ed"
+    }
+  ],
+  "candidateManifest": "docs/architecture-transition/phase-0b-salvage-candidates.json",
+  "candidateHashField": "candidates[].sha256",
+  "verification": "Recompute SHA-256 from source bytes and compare each candidate record."
+}
