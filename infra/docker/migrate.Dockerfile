@@ -1,4 +1,4 @@
-FROM node:24.18.0-alpine AS build
+FROM node:26.8.1-alpine AS build
 WORKDIR /workspace
 RUN corepack enable
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
@@ -9,7 +9,7 @@ RUN pnpm db:generate
 RUN pnpm --filter @nexo/database... build
 RUN pnpm deploy --filter @nexo/database /out
 
-FROM node:24.18.0-alpine AS runtime
+FROM node:26.8.1-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN addgroup -S nexo && adduser -S -G nexo nexo
