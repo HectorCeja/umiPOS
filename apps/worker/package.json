@@ -22,7 +22,7 @@
   "devDependencies": {
     "@nexo/typescript-config": "workspace:*",
     "@vitest/coverage-v8": "3.2.4",
-    "tsx": "4.20.3",
+    "tsx": "4.23.15",
     "vitest": "3.2.4"
   }
 }

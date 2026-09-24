@@ -31,9 +31,9 @@
     "@nexo/typescript-config": "workspace:*",
     "@types/pg": "8.15.5",
     "@vitest/coverage-v8": "3.2.4",
-    "dotenv": "17.2.1",
-    "prisma": "7.8.0",
-    "tsx": "4.20.3",
+    "dotenv": "18.0.1",
+    "prisma": "7.10.0",
+    "tsx": "4.23.15",
     "vitest": "3.2.4"
   }
 }
