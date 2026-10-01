@@ -1,4 +1,4 @@
-FROM node:24.18.0-alpine AS build
+FROM node:26.10.0-alpine AS build
 WORKDIR /workspace
 RUN corepack enable
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
@@ -7,7 +7,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --offline
 RUN pnpm --filter @nexo/web... build
 
-FROM node:24.18.0-alpine AS runtime
+FROM node:26.10.0-alpine AS runtime
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
 ENV PORT=3000
